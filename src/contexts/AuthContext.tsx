@@ -57,6 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email: u.email ?? "",
       fullName,
       avatarUrl: profile?.avatar_url ?? null,
+      completedPedalsCount: profile?.completed_pedals_count ?? 0,
     };
     setCachedProfile(next);
     setProfileCache(next);

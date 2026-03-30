@@ -1,10 +1,17 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { toast } from "sonner";
 import type { PedalDetailRecord, PedalParticipantRow } from "@/types/pedal-details";
 import type { RouteMapValue } from "@/components/pedals/RouteMap";
+import {
+  cancelPedalAsCreator,
+  completePedalAsCreator,
+  startPedalAsCreator,
+  withdrawFromPedalBeforeStart,
+} from "@/lib/pedal-detail-client";
 
 const RouteMap = dynamic(
   () => import("@/components/pedals/RouteMap").then((m) => m.RouteMap),
@@ -61,6 +68,9 @@ interface PedalInfoTabProps {
   joining: boolean;
   justRequested: boolean;
   onJoin: () => void;
+  onPedalPatch: (patch: Partial<PedalDetailRecord>) => void;
+  onCompletedPedal?: () => Promise<void>;
+  onLeftPedal?: () => Promise<void>;
 }
 
 export function PedalInfoTab({
@@ -72,7 +82,104 @@ export function PedalInfoTab({
   joining,
   justRequested,
   onJoin,
+  onPedalPatch,
+  onCompletedPedal,
+  onLeftPedal,
 }: PedalInfoTabProps) {
+  const [starting, setStarting] = useState(false);
+  const [finishing, setFinishing] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [leaving, setLeaving] = useState(false);
+
+  const status = pedal.status ?? "scheduled";
+  const canJoinFlow =
+    status === "scheduled" || status === "in_progress";
+
+  const onStartPedal = useCallback(async () => {
+    if (!userId || userId !== pedal.creator_id) return;
+    if (status !== "scheduled") {
+      toast.error("Só é possível iniciar um pedal agendado.");
+      return;
+    }
+    setStarting(true);
+    const { error } = await startPedalAsCreator(pedal.id, userId);
+    setStarting(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    onPedalPatch({
+      status: "in_progress",
+      started_at: new Date().toISOString(),
+    });
+    toast.success("Pedal iniciado");
+  }, [userId, pedal.creator_id, pedal.id, status, onPedalPatch]);
+
+  const onFinishPedal = useCallback(async () => {
+    if (!userId || userId !== pedal.creator_id) return;
+    if (status !== "in_progress") {
+      toast.error("Só é possível finalizar um pedal em andamento.");
+      return;
+    }
+    setFinishing(true);
+    const { error } = await completePedalAsCreator(pedal.id, userId);
+    setFinishing(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    onPedalPatch({
+      status: "completed",
+      ended_at: new Date().toISOString(),
+    });
+    toast.success("Pedal finalizado");
+    await onCompletedPedal?.();
+  }, [userId, pedal.creator_id, pedal.id, status, onPedalPatch, onCompletedPedal]);
+
+  const onCancelPedal = useCallback(async () => {
+    if (!userId || userId !== pedal.creator_id) return;
+    if (status !== "scheduled") {
+      toast.error("Só é possível cancelar um pedal agendado.");
+      return;
+    }
+    if (
+      !window.confirm(
+        "Cancelar este pedal? Os participantes aprovados serão notificados."
+      )
+    ) {
+      return;
+    }
+    setCancelling(true);
+    const { error } = await cancelPedalAsCreator(pedal.id, userId);
+    setCancelling(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    onPedalPatch({ status: "cancelled" });
+    toast.success("Pedal cancelado");
+  }, [userId, pedal.creator_id, pedal.id, status, onPedalPatch]);
+
+  const onLeavePedal = useCallback(async () => {
+    if (!userId) return;
+    if (status !== "scheduled") {
+      toast.error("Só é possível sair antes do pedal iniciar.");
+      return;
+    }
+    if (!window.confirm("Sair deste pedal? Pode voltar a pedir para participar depois.")) {
+      return;
+    }
+    setLeaving(true);
+    const { error } = await withdrawFromPedalBeforeStart(pedal.id, userId);
+    setLeaving(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Você saiu do pedal");
+    await onLeftPedal?.();
+  }, [userId, pedal.id, status, onLeftPedal]);
+
   const hasRoute =
     pedal.route_geojson &&
     pedal.route_geojson.type === "LineString" &&
@@ -104,7 +211,16 @@ export function PedalInfoTab({
     participateBlock = (
       <section className="rounded-xl border border-gray-100 bg-surface p-4 shadow-sm">
         <p className="text-sm font-semibold text-foreground">Participação</p>
-        {!userId && (
+        {!canJoinFlow && (
+          <p className="mt-2 text-sm text-text-secondary">
+            {status === "completed"
+              ? "Este pedal já foi realizado."
+              : status === "cancelled"
+                ? "Este pedal foi cancelado."
+                : "Não é possível solicitar participação neste pedal."}
+          </p>
+        )}
+        {!userId && canJoinFlow && (
           <p className="mt-2 text-sm text-text-secondary">
             <Link href="/login" className="font-medium text-primary underline">
               Entre na sua conta
@@ -112,10 +228,10 @@ export function PedalInfoTab({
             para solicitar participação neste pedal.
           </p>
         )}
-        {userId && !participationLoaded && (
+        {userId && canJoinFlow && !participationLoaded && (
           <p className="mt-2 text-sm text-text-secondary">A carregar…</p>
         )}
-        {userId && participationLoaded && !participation && (
+        {userId && canJoinFlow && participationLoaded && !participation && (
           <>
             <p className="mt-2 text-sm text-text-secondary">
               Ainda não participa deste pedal.
@@ -135,12 +251,18 @@ export function PedalInfoTab({
             )}
           </>
         )}
-        {userId && participationLoaded && participation?.status === "pending" && (
+        {userId &&
+          canJoinFlow &&
+          participationLoaded &&
+          participation?.status === "pending" && (
           <p className="mt-3 text-sm font-medium text-secondary">
             Aguardando aprovação
           </p>
         )}
-        {userId && participationLoaded && participation?.status === "rejected" && (
+        {userId &&
+          canJoinFlow &&
+          participationLoaded &&
+          participation?.status === "rejected" && (
           <>
             <p className="mt-2 text-sm text-text-secondary">
               Sua solicitação não foi aprovada. Pode solicitar novamente.
@@ -160,10 +282,28 @@ export function PedalInfoTab({
             )}
           </>
         )}
-        {userId && participationLoaded && participation?.status === "approved" && (
+        {userId &&
+          canJoinFlow &&
+          participationLoaded &&
+          participation?.status === "approved" && (
           <p className="mt-2 text-sm text-secondary">
             Você está aprovado. Veja participantes e chat nas outras abas.
           </p>
+        )}
+        {userId &&
+          status === "scheduled" &&
+          participationLoaded &&
+          participation &&
+          (participation.status === "pending" ||
+            participation.status === "approved") && (
+          <button
+            type="button"
+            disabled={leaving || joining}
+            onClick={onLeavePedal}
+            className="mt-4 w-full rounded-xl border border-red-200 bg-red-50 py-3 text-sm font-semibold text-red-800 shadow-sm transition enabled:hover:bg-red-100 disabled:opacity-50"
+          >
+            {leaving ? "A sair…" : "Sair do pedal"}
+          </button>
         )}
       </section>
     );
@@ -178,12 +318,54 @@ export function PedalInfoTab({
         <p className="mt-1 text-sm text-text-secondary">
           Gerencie solicitações na aba Participantes.
         </p>
-        <Link
-          href={`/pedals/${pedal.id}/edit`}
-          className="mt-3 flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-primary to-emerald-500 py-3 text-sm font-semibold text-white shadow-sm transition hover:brightness-110"
-        >
-          Editar pedal
-        </Link>
+        {status === "completed" && (
+          <p className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-center text-sm font-medium text-emerald-800 ring-1 ring-emerald-200/80">
+            Pedal finalizado ✅
+          </p>
+        )}
+        {status === "cancelled" && (
+          <p className="mt-3 rounded-xl bg-gray-100 px-3 py-2 text-center text-sm font-medium text-text-secondary ring-1 ring-gray-200/80">
+            Pedal cancelado
+          </p>
+        )}
+        {status === "scheduled" && userId === pedal.creator_id && (
+          <button
+            type="button"
+            disabled={starting}
+            onClick={onStartPedal}
+            className="mt-3 w-full rounded-xl bg-gradient-to-r from-primary to-emerald-500 py-3 text-sm font-semibold text-white shadow-md transition enabled:hover:brightness-110 disabled:opacity-50"
+          >
+            {starting ? "A iniciar…" : "Iniciar Pedal"}
+          </button>
+        )}
+        {status === "in_progress" && userId === pedal.creator_id && (
+          <button
+            type="button"
+            disabled={finishing}
+            onClick={onFinishPedal}
+            className="mt-3 w-full rounded-xl bg-gradient-to-r from-primary to-emerald-500 py-3 text-sm font-semibold text-white shadow-md transition enabled:hover:brightness-110 disabled:opacity-50"
+          >
+            {finishing ? "A finalizar…" : "Finalizar Pedal"}
+          </button>
+        )}
+        {status !== "cancelled" && (
+          <Link
+            href={`/pedals/${pedal.id}/edit`}
+            className="mt-3 flex w-full items-center justify-center rounded-xl border border-primary/30 bg-surface py-3 text-sm font-semibold text-primary shadow-sm transition hover:bg-primary/5"
+          >
+            Editar pedal
+          </Link>
+        )}
+        {status === "scheduled" && userId === pedal.creator_id && (
+          <button
+            type="button"
+            disabled={cancelling || starting}
+            onClick={onCancelPedal}
+            className="mt-3 w-full rounded-xl border border-red-200 bg-red-50 py-3 text-sm font-semibold text-red-800 shadow-sm transition enabled:hover:bg-red-100 disabled:opacity-50"
+          >
+            {cancelling ? "A cancelar…" : "Cancelar pedal"}
+          </button>
+        )}
       </section>
     );
   }

@@ -7,6 +7,8 @@ export interface CachedProfile {
   email: string;
   fullName: string;
   avatarUrl: string | null;
+  /** Pedais concluídos (criador ou participante aprovado); mantido em `profiles.completed_pedals_count`. */
+  completedPedalsCount: number;
 }
 
 export interface ProfileRow {
@@ -17,6 +19,7 @@ export interface ProfileRow {
   city: string | null;
   gender: string | null;
   skill_level: string | null;
+  completed_pedals_count: number;
 }
 
 export function getCachedProfile(): CachedProfile | null {
@@ -24,7 +27,15 @@ export function getCachedProfile(): CachedProfile | null {
   try {
     const raw = localStorage.getItem(PROFILE_CACHE_KEY);
     if (!raw) return null;
-    return JSON.parse(raw) as CachedProfile;
+    const parsed = JSON.parse(raw) as Partial<CachedProfile>;
+    if (!parsed.userId) return null;
+    return {
+      userId: parsed.userId,
+      email: parsed.email ?? "",
+      fullName: parsed.fullName ?? "Usuário",
+      avatarUrl: parsed.avatarUrl ?? null,
+      completedPedalsCount: parsed.completedPedalsCount ?? 0,
+    };
   } catch {
     return null;
   }
@@ -51,12 +62,18 @@ export function clearCachedProfile(): void {
 export async function getProfile(userId: string): Promise<ProfileRow | null> {
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, first_name, last_name, avatar_url, city, gender, skill_level")
+    .select(
+      "id, first_name, last_name, avatar_url, city, gender, skill_level, completed_pedals_count"
+    )
     .eq("id", userId)
     .single();
 
   if (error || !data) return null;
-  return data as ProfileRow;
+  const row = data as ProfileRow;
+  return {
+    ...row,
+    completed_pedals_count: row.completed_pedals_count ?? 0,
+  };
 }
 
 export interface ProfileUpdate {

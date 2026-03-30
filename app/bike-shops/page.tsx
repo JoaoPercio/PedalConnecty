@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { Navbar } from "@/components/Navbar";
 import { FooterNav } from "@/components/FooterNav";
-import { FloatingCreatePedalButton } from "@/components/FloatingCreatePedalButton";
 
 const BikeServicesMap = dynamic(
   () =>
@@ -62,7 +61,6 @@ export default function BikeShopsPage() {
       </main>
 
       <FooterNav />
-      <FloatingCreatePedalButton />
     </div>
   );
 }

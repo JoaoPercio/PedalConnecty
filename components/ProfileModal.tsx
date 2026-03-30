@@ -49,6 +49,9 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
           <div className="text-center">
             <p className="font-medium text-foreground">{fullName}</p>
             <p className="text-sm text-text-secondary">{email}</p>
+            <p className="mt-2 text-sm font-medium text-foreground">
+              Pedais realizados: {profileCache?.completedPedalsCount ?? 0}
+            </p>
           </div>
         </div>
 

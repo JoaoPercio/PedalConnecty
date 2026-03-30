@@ -13,12 +13,17 @@ export interface RouteGeoJSON {
 
 export type PedalParticipantStatus = "pending" | "approved" | "rejected";
 
+export type PedalRunStatus = "scheduled" | "in_progress" | "completed" | "cancelled";
+
 export interface PedalDetailRecord {
   id: string;
   creator_id: string;
   name: string;
   description: string | null;
   date: string;
+  status: PedalRunStatus | string;
+  started_at: string | null;
+  ended_at: string | null;
   distance_km: number | null;
   elevation_gain: number | null;
   difficulty: PedalDifficulty | null;

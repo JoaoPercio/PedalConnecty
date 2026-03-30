@@ -120,11 +120,13 @@ export default function ProfileEditPage() {
         }
       }
 
+      const freshProfile = await getProfile(user.id);
       setCachedProfile({
         userId: user.id,
         email: user.email ?? "",
         fullName: name,
         avatarUrl,
+        completedPedalsCount: freshProfile?.completed_pedals_count ?? 0,
       });
       await refreshProfileCache();
       router.push("/home");

@@ -111,6 +111,7 @@ export function NearbyRoutesList() {
             route={r}
             favorited={favoriteIds.has(r.id)}
             onFavoriteChange={handleFavoriteChange}
+            showRoutePreview
           />
         </li>
       ))}

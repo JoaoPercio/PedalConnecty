@@ -14,6 +14,7 @@ export default function MeusPedaisPage() {
   const router = useRouter();
   const [owned, setOwned] = useState<PedalSummary[]>([]);
   const [participating, setParticipating] = useState<PedalSummary[]>([]);
+  const [completed, setCompleted] = useState<PedalSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -26,7 +27,8 @@ export default function MeusPedaisPage() {
 
     let cancelled = false;
     setLoading(true);
-    fetchMyPedalsLists(user.id).then(({ owned: o, participating: p, error: err }) => {
+    fetchMyPedalsLists(user.id).then(
+      ({ owned: o, participating: p, completed: c, error: err }) => {
       if (cancelled) return;
       setLoading(false);
       if (err) {
@@ -35,8 +37,10 @@ export default function MeusPedaisPage() {
       }
       setOwned(o);
       setParticipating(p);
+      setCompleted(c);
       setError(null);
-    });
+    }
+    );
 
     return () => {
       cancelled = true;
@@ -109,6 +113,25 @@ export default function MeusPedaisPage() {
               ) : (
                 <ul className="space-y-3">
                   {participating.map((p) => (
+                    <li key={p.id}>
+                      <PedalSummaryCard pedal={p} />
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+
+            <section className="space-y-3">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-text-secondary">
+                Pedais realizados
+              </h2>
+              {completed.length === 0 ? (
+                <p className="rounded-xl border border-dashed border-gray-200 bg-background/80 px-4 py-8 text-center text-sm text-text-secondary">
+                  Ainda não há pedais concluídos na sua conta.
+                </p>
+              ) : (
+                <ul className="space-y-3">
+                  {completed.map((p) => (
                     <li key={p.id}>
                       <PedalSummaryCard pedal={p} />
                     </li>

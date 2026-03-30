@@ -15,7 +15,7 @@ export default async function PedalDetailPage({ params }: PedalPageProps) {
   const { data, error } = await supabase
     .from("pedals")
     .select(
-      "id,creator_id,name,description,date,distance_km,elevation_gain,difficulty,terrain,max_participants,requires_safety_equipment,required_equipment,age_group,visibility,route_geojson"
+      "id,creator_id,name,description,date,status,started_at,ended_at,distance_km,elevation_gain,difficulty,terrain,max_participants,requires_safety_equipment,required_equipment,age_group,visibility,route_geojson"
     )
     .eq("id", id)
     .single();
@@ -29,7 +29,7 @@ export default async function PedalDetailPage({ params }: PedalPageProps) {
   return (
     <div className="min-h-screen bg-background pb-16">
       <Navbar />
-      <PedalDetails initialPedal={pedal} />
+      <PedalDetails key={pedal.id} initialPedal={pedal} />
       <FooterNav />
     </div>
   );

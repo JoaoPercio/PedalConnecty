@@ -175,7 +175,7 @@ const NearbyMapInner = () => {
         .select(
           "id,name,description,date,start_lat,start_lng,distance_km,elevation_gain,difficulty,terrain,status,visibility,max_participants,age_group"
         )
-        .eq("status", "scheduled")
+        .or("status.eq.scheduled,status.eq.in_progress")
         .in("visibility", ["public", "female_only"])
         .not("start_lat", "is", null)
         .not("start_lng", "is", null)

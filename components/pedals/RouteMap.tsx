@@ -19,7 +19,10 @@ interface RouteMapProps {
   onChange: (value: RouteMapValue) => void;
   height?: string;
   readOnly?: boolean;
+  /** Com `readOnly`: tiles + rota como imagem fixa (sem pan/zoom). */
+  staticDisplay?: boolean;
   center?: [number, number];
+  containerClassName?: string;
 }
 
 const DEFAULT_CENTER: [number, number] = [-23.5505, -46.6333];
@@ -55,10 +58,11 @@ function addStartEndMarkers(
   const endIcon = createPinIcon(L, "#2E7D32");
   const start = L.marker([coordinates[0][0], coordinates[0][1]], {
     icon: startIcon,
+    title: "Início",
   });
   const end = L.marker(
     [coordinates[coordinates.length - 1][0], coordinates[coordinates.length - 1][1]],
-    { icon: endIcon }
+    { icon: endIcon, title: "Chegada" }
   );
   start.addTo(group);
   end.addTo(group);
@@ -71,15 +75,19 @@ export function RouteMap({
   onChange,
   height = "400px",
   readOnly = false,
+  staticDisplay = false,
   center,
+  containerClassName = "",
 }: RouteMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const onChangeRef = useRef(onChange);
   const readOnlyRef = useRef(readOnly);
+  const staticDisplayRef = useRef(staticDisplay);
   const valueRef = useRef(value);
   onChangeRef.current = onChange;
   readOnlyRef.current = readOnly;
+  staticDisplayRef.current = staticDisplay;
   valueRef.current = value;
 
   const mapCenter = center ?? DEFAULT_CENTER;
@@ -122,11 +130,19 @@ export function RouteMap({
     };
 
     if (mapRef.current) return;
+
+    const isReadOnlyInit = readOnlyRef.current;
+    const staticMode = isReadOnlyInit && staticDisplayRef.current;
+
     const map = L.map(container, {
-      // Distância maior ajuda o Leaflet a tratar toque curto como “clique” (novo ponto)
-      // e movimento maior como arraste (mover o mapa), em mobile e desktop.
       tapTolerance: 40,
-      touchZoom: true,
+      touchZoom: !staticMode,
+      dragging: !staticMode,
+      scrollWheelZoom: !staticMode,
+      doubleClickZoom: !staticMode,
+      boxZoom: !staticMode,
+      keyboard: !staticMode,
+      zoomControl: !staticMode,
       bounceAtZoomLimits: false,
     }).setView(mapCenter, 13);
     mapRef.current = map;
@@ -141,14 +157,21 @@ export function RouteMap({
     if (isReadOnly && initialValue.coordinates.length > 0) {
       const polyline = L.polyline(initialValue.coordinates, {
         color: "#1B5E20",
-        weight: 4,
+        weight: staticMode ? 3 : 4,
       });
       polyline.addTo(map);
       const markersGroup = addStartEndMarkers(map, L, initialValue.coordinates);
-      map.fitBounds(polyline.getBounds().pad(0.2));
+      if (initialValue.coordinates.length >= 2) {
+        map.fitBounds(polyline.getBounds().pad(0.2));
+      } else {
+        const [lat, lng] = initialValue.coordinates[0];
+        map.setView([lat, lng], 15);
+      }
       return () => {
         restoreFinishHandler();
-        map.removeLayer(markersGroup);
+        if (markersGroup && map.hasLayer(markersGroup)) {
+          map.removeLayer(markersGroup);
+        }
         map.remove();
         mapRef.current = null;
       };
@@ -270,7 +293,7 @@ export function RouteMap({
       map.remove();
       mapRef.current = null;
     };
-  }, [mapCenter[0], mapCenter[1]]);
+  }, [mapCenter[0], mapCenter[1], staticDisplay]);
 
   useEffect(() => {
     if (mapRef.current && center) {
@@ -287,7 +310,7 @@ export function RouteMap({
       `}</style>
       <div
         ref={containerRef}
-        className="overflow-hidden rounded-xl border border-gray-200 bg-surface touch-manipulation select-none"
+        className={`overflow-hidden rounded-xl border border-gray-200 bg-surface touch-manipulation select-none ${containerClassName}`.trim()}
         style={{
           height: safeHeight,
           touchAction: "manipulation",

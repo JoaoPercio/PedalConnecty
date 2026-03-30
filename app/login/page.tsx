@@ -65,6 +65,7 @@ export default function LoginPage() {
         email: userEmail,
         fullName,
         avatarUrl: profile?.avatar_url ?? null,
+        completedPedalsCount: profile?.completed_pedals_count ?? 0,
       });
     }
     router.replace("/home");

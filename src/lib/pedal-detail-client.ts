@@ -16,6 +16,130 @@ function singleProfile<T extends { profiles?: ParticipantProfile | ParticipantPr
   return Array.isArray(p) ? p[0] ?? null : p;
 }
 
+/**
+ * Only the creator can start; DB update is constrained to status = scheduled.
+ */
+export async function startPedalAsCreator(
+  pedalId: string,
+  creatorId: string
+): Promise<{ error: Error | null }> {
+  const { data, error } = await supabase
+    .from("pedals")
+    .update({
+      status: "in_progress",
+      started_at: new Date().toISOString(),
+    })
+    .eq("id", pedalId)
+    .eq("creator_id", creatorId)
+    .eq("status", "scheduled")
+    .select("id")
+    .maybeSingle();
+
+  if (error) return { error };
+  if (!data) {
+    return {
+      error: new Error(
+        "Só é possível iniciar um pedal agendado, e apenas o organizador pode fazer isso."
+      ),
+    };
+  }
+  return { error: null };
+}
+
+/**
+ * Only the creator can finish; DB update is constrained to status = in_progress.
+ */
+export async function completePedalAsCreator(
+  pedalId: string,
+  creatorId: string
+): Promise<{ error: Error | null }> {
+  const { data, error } = await supabase
+    .from("pedals")
+    .update({
+      status: "completed",
+      ended_at: new Date().toISOString(),
+    })
+    .eq("id", pedalId)
+    .eq("creator_id", creatorId)
+    .eq("status", "in_progress")
+    .select("id")
+    .maybeSingle();
+
+  if (error) return { error };
+  if (!data) {
+    return {
+      error: new Error(
+        "Só é possível finalizar um pedal em andamento, e apenas o organizador pode fazer isso."
+      ),
+    };
+  }
+  return { error: null };
+}
+
+/**
+ * Only the creator can cancel; allowed while status is still scheduled.
+ */
+export async function cancelPedalAsCreator(
+  pedalId: string,
+  creatorId: string
+): Promise<{ error: Error | null }> {
+  const { data, error } = await supabase
+    .from("pedals")
+    .update({ status: "cancelled" })
+    .eq("id", pedalId)
+    .eq("creator_id", creatorId)
+    .eq("status", "scheduled")
+    .select("id")
+    .maybeSingle();
+
+  if (error) return { error };
+  if (!data) {
+    return {
+      error: new Error(
+        "Só é possível cancelar um pedal agendado, e apenas o organizador pode fazer isso."
+      ),
+    };
+  }
+  return { error: null };
+}
+
+/**
+ * Participant leaves before start: removes their row. Not allowed for the organizer.
+ */
+export async function withdrawFromPedalBeforeStart(
+  pedalId: string,
+  userId: string
+): Promise<{ error: Error | null }> {
+  const { data: pedal, error: pedalError } = await supabase
+    .from("pedals")
+    .select("id, status, creator_id")
+    .eq("id", pedalId)
+    .maybeSingle();
+
+  if (pedalError) return { error: pedalError };
+  if (!pedal) return { error: new Error("Pedal não encontrado.") };
+  if (pedal.status !== "scheduled") {
+    return {
+      error: new Error("Só é possível sair enquanto o pedal ainda não foi iniciado."),
+    };
+  }
+  if (pedal.creator_id === userId) {
+    return {
+      error: new Error(
+        "O organizador não pode sair como participante. Cancele o pedal se não for mais realizar."
+      ),
+    };
+  }
+
+  const { error } = await supabase
+    .from("pedal_participants")
+    .delete()
+    .eq("pedal_id", pedalId)
+    .eq("user_id", userId);
+
+  return { error: error ?? null };
+}
+
 export async function fetchMyParticipation(
   pedalId: string,
   userId: string

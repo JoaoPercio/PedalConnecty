@@ -32,7 +32,8 @@ interface PedalDetailsProps {
 }
 
 export function PedalDetails({ initialPedal }: PedalDetailsProps) {
-  const { user } = useAuth();
+  const { user, refreshProfileCache } = useAuth();
+  const [pedal, setPedal] = useState<PedalDetailRecord>(initialPedal);
   const [activeTab, setActiveTab] = useState<TabId>("info");
   const [participation, setParticipation] = useState<PedalParticipantRow | null>(null);
   const [participationLoaded, setParticipationLoaded] = useState(false);
@@ -44,7 +45,11 @@ export function PedalDetails({ initialPedal }: PedalDetailsProps) {
   const [participantsFetched, setParticipantsFetched] = useState(false);
   const [pendingBusyId, setPendingBusyId] = useState<string | null>(null);
 
-  const isOwner = !!user?.id && user.id === initialPedal.creator_id;
+  const isOwner = !!user?.id && user.id === pedal.creator_id;
+
+  const patchPedal = useCallback((patch: Partial<PedalDetailRecord>) => {
+    setPedal((prev) => ({ ...prev, ...patch }));
+  }, []);
   const canViewParticipants =
     isOwner || participation?.status === "approved";
   const canUseChat = canViewParticipants;
@@ -57,7 +62,7 @@ export function PedalDetails({ initialPedal }: PedalDetailsProps) {
     }
     let cancelled = false;
     setParticipationLoaded(false);
-    fetchMyParticipation(initialPedal.id, user.id).then((row) => {
+    fetchMyParticipation(pedal.id, user.id).then((row) => {
       if (cancelled) return;
       setParticipation(row);
       setParticipationLoaded(true);
@@ -65,7 +70,7 @@ export function PedalDetails({ initialPedal }: PedalDetailsProps) {
     return () => {
       cancelled = true;
     };
-  }, [user?.id, initialPedal.id]);
+  }, [user?.id, pedal.id]);
 
   useEffect(() => {
     setParticipantsFetched(false);
@@ -74,10 +79,10 @@ export function PedalDetails({ initialPedal }: PedalDetailsProps) {
   useEffect(() => {
     if (!user?.id) return;
     if (activeTab !== "participants" && activeTab !== "chat") return;
-    fetchMyParticipation(initialPedal.id, user.id).then((row) =>
+    fetchMyParticipation(pedal.id, user.id).then((row) =>
       setParticipation(row)
     );
-  }, [activeTab, user?.id, initialPedal.id]);
+  }, [activeTab, user?.id, pedal.id]);
 
   useEffect(() => {
     if (activeTab !== "participants" || !canViewParticipants) return;
@@ -88,9 +93,9 @@ export function PedalDetails({ initialPedal }: PedalDetailsProps) {
 
     (async () => {
       const [{ rows: appr, error: errA }, pendingRes] = await Promise.all([
-        fetchApprovedParticipants(initialPedal.id),
+        fetchApprovedParticipants(pedal.id),
         isOwner
-          ? fetchPendingParticipants(initialPedal.id)
+          ? fetchPendingParticipants(pedal.id)
           : Promise.resolve({ rows: [], error: null as Error | null }),
       ]);
 
@@ -109,32 +114,32 @@ export function PedalDetails({ initialPedal }: PedalDetailsProps) {
     activeTab,
     canViewParticipants,
     participantsFetched,
-    initialPedal.id,
+    pedal.id,
     isOwner,
   ]);
 
   const refreshParticipants = useCallback(async () => {
     const [apprRes, pendRes] = await Promise.all([
-      fetchApprovedParticipants(initialPedal.id),
+      fetchApprovedParticipants(pedal.id),
       isOwner
-        ? fetchPendingParticipants(initialPedal.id)
+        ? fetchPendingParticipants(pedal.id)
         : Promise.resolve({ rows: [], error: null as Error | null }),
     ]);
     if (!apprRes.error) setApproved(apprRes.rows);
     if (isOwner && !pendRes.error) setPending(pendRes.rows);
-  }, [initialPedal.id, isOwner]);
+  }, [pedal.id, isOwner]);
 
   const onJoin = useCallback(async () => {
     if (!user?.id) return;
     setJoining(true);
-    const { error } = await requestJoinPedal(initialPedal.id, user.id);
+    const { error } = await requestJoinPedal(pedal.id, user.id);
     setJoining(false);
     if (!error) {
       setJustRequested(true);
-      const row = await fetchMyParticipation(initialPedal.id, user.id);
+      const row = await fetchMyParticipation(pedal.id, user.id);
       setParticipation(row);
     }
-  }, [user?.id, initialPedal.id]);
+  }, [user?.id, pedal.id]);
 
   const onApprove = useCallback(
     async (participantRowId: string) => {
@@ -155,6 +160,14 @@ export function PedalDetails({ initialPedal }: PedalDetailsProps) {
     },
     [refreshParticipants]
   );
+
+  const onLeftPedal = useCallback(async () => {
+    setParticipantsFetched(false);
+    if (user?.id) {
+      const row = await fetchMyParticipation(pedal.id, user.id);
+      setParticipation(row);
+    }
+  }, [user?.id, pedal.id]);
 
   return (
     <main className="mx-auto max-w-xl px-4 py-6">
@@ -181,7 +194,7 @@ export function PedalDetails({ initialPedal }: PedalDetailsProps) {
       <div className="mt-6">
         {activeTab === "info" && (
           <PedalInfoTab
-            pedal={initialPedal}
+            pedal={pedal}
             userId={user?.id ?? null}
             participation={participation}
             participationLoaded={participationLoaded}
@@ -189,6 +202,9 @@ export function PedalDetails({ initialPedal }: PedalDetailsProps) {
             joining={joining}
             justRequested={justRequested}
             onJoin={onJoin}
+            onPedalPatch={patchPedal}
+            onCompletedPedal={refreshProfileCache}
+            onLeftPedal={onLeftPedal}
           />
         )}
         {activeTab === "participants" && (
@@ -205,7 +221,7 @@ export function PedalDetails({ initialPedal }: PedalDetailsProps) {
         )}
         {activeTab === "chat" && (
           <PedalChatTab
-            pedalId={initialPedal.id}
+            pedalId={pedal.id}
             userId={user?.id ?? null}
             canUseChat={canUseChat}
           />
