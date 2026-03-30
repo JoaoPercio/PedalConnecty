@@ -1,0 +1,127 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
+import { Navbar } from "@/components/Navbar";
+import { FooterNav } from "@/components/FooterNav";
+import { FloatingCreatePedalButton } from "@/components/FloatingCreatePedalButton";
+import { PedalSummaryCard } from "@/components/pedals/PedalSummaryCard";
+import { fetchMyPedalsLists, type PedalSummary } from "@/lib/my-pedals";
+
+export default function MeusPedaisPage() {
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
+  const [owned, setOwned] = useState<PedalSummary[]>([]);
+  const [participating, setParticipating] = useState<PedalSummary[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+      router.replace("/login");
+      return;
+    }
+
+    let cancelled = false;
+    setLoading(true);
+    fetchMyPedalsLists(user.id).then(({ owned: o, participating: p, error: err }) => {
+      if (cancelled) return;
+      setLoading(false);
+      if (err) {
+        setError("Não foi possível carregar os pedais.");
+        return;
+      }
+      setOwned(o);
+      setParticipating(p);
+      setError(null);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user, authLoading, router]);
+
+  if (authLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <p className="text-text-secondary">Carregando…</p>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
+
+  return (
+    <div className="min-h-screen bg-background pb-24">
+      <Navbar />
+
+      <main className="mx-auto max-w-xl px-4 py-6">
+        <h1 className="text-xl font-semibold text-foreground">Meus pedais</h1>
+        <p className="mt-1 text-sm text-text-secondary">
+          Pedais que você organiza e pedais em que participa.
+        </p>
+
+        {loading && (
+          <div className="mt-10 flex justify-center">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          </div>
+        )}
+
+        {error && (
+          <p className="mt-6 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {error}
+          </p>
+        )}
+
+        {!loading && !error && (
+          <div className="mt-8 space-y-10">
+            <section className="space-y-3">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-text-secondary">
+                Organizo
+              </h2>
+              {owned.length === 0 ? (
+                <p className="rounded-xl border border-dashed border-gray-200 bg-background/80 px-4 py-8 text-center text-sm text-text-secondary">
+                  Você ainda não criou nenhum pedal.
+                </p>
+              ) : (
+                <ul className="space-y-3">
+                  {owned.map((p) => (
+                    <li key={p.id}>
+                      <PedalSummaryCard pedal={p} />
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+
+            <section className="space-y-3">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-text-secondary">
+                Participo
+              </h2>
+              {participating.length === 0 ? (
+                <p className="rounded-xl border border-dashed border-gray-200 bg-background/80 px-4 py-8 text-center text-sm text-text-secondary">
+                  Você ainda não participa de outros pedais.
+                </p>
+              ) : (
+                <ul className="space-y-3">
+                  {participating.map((p) => (
+                    <li key={p.id}>
+                      <PedalSummaryCard pedal={p} />
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          </div>
+        )}
+      </main>
+
+      <FooterNav />
+      <FloatingCreatePedalButton />
+    </div>
+  );
+}
