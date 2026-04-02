@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { MAP_INITIAL_VIEW_CENTER } from "@/lib/geolocation";
 import "leaflet/dist/leaflet.css";
 import "leaflet-draw/dist/leaflet.draw.css";
 
@@ -24,8 +25,6 @@ interface RouteMapProps {
   center?: [number, number];
   containerClassName?: string;
 }
-
-const DEFAULT_CENTER: [number, number] = [-23.5505, -46.6333];
 
 function toRouteValue(layer: L.Polyline): RouteMapValue {
   const latLngs = layer.getLatLngs() as L.LatLng[];
@@ -90,7 +89,7 @@ export function RouteMap({
   staticDisplayRef.current = staticDisplay;
   valueRef.current = value;
 
-  const mapCenter = center ?? DEFAULT_CENTER;
+  const mapCenter = center ?? MAP_INITIAL_VIEW_CENTER;
 
   useEffect(() => {
     const container = containerRef.current;

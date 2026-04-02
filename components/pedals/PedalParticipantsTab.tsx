@@ -4,6 +4,7 @@ import type { ApprovedParticipant } from "@/types/pedal-details";
 import type { PendingParticipantRow } from "@/types/pedal-details";
 import { displayNameFromParticipant } from "@/lib/pedal-detail-client";
 import { PendingApprovalList } from "@/components/pedals/PendingApprovalList";
+import { AvatarImg } from "@/components/AvatarImg";
 
 function skillLevelLabel(level: string | null | undefined): string {
   if (!level) return "—";
@@ -92,11 +93,7 @@ export function PedalParticipantsTab({
                 >
                   <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-full bg-background ring-2 ring-primary/10">
                     {prof?.avatar_url ? (
-                      <img
-                        src={prof.avatar_url}
-                        alt=""
-                        className="h-full w-full object-cover"
-                      />
+                      <AvatarImg src={prof.avatar_url} className="h-full w-full object-cover" />
                     ) : (
                       <span className="flex h-full w-full items-center justify-center text-xs font-semibold text-primary">
                         {name.slice(0, 1).toUpperCase()}

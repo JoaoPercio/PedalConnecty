@@ -17,6 +17,7 @@ export interface StepSkillLevel {
 export interface StepAccount {
   email: string;
   password: string;
+  password_confirm: string;
   avatar_file: File | null;
 }
 

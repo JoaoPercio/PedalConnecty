@@ -44,11 +44,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const u = data?.session?.user;
     if (!u) return;
     const cached = getCachedProfile();
-    if (cached?.userId === u.id) {
+    if (cached?.userId === u.id && cached.avatarUrl) {
       setProfileCache(cached);
       return;
     }
-    const profile = await getProfile(u.id);
+    let profile = await getProfile(u.id);
+    if (!profile) {
+      // First login right after register can race profile/storage availability.
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      profile = await getProfile(u.id);
+    }
     const fullName = profile
       ? [profile.first_name, profile.last_name].filter(Boolean).join(" ") || "Usuário"
       : "Usuário";
@@ -82,15 +87,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       const u = session?.user ?? null;
       setUser(u);
       if (!u) {
         setProfileCache(null);
         clearCachedProfile();
       } else {
+        // Always refresh on sign-in to avoid stale first-login avatar cache.
+        if (event === "SIGNED_IN") {
+          refreshProfileCache();
+          return;
+        }
         const cached = getCachedProfile();
-        if (cached?.userId === u.id) setProfileCache(cached);
+        if (cached?.userId === u.id && cached.avatarUrl) setProfileCache(cached);
         else refreshProfileCache();
       }
     });

@@ -13,7 +13,12 @@ import {
   lineStringToStart,
   type RouteGeoJSONLineString,
 } from "@/lib/routes";
-import { requestUserPosition, getMapCenter } from "@/lib/geolocation";
+import {
+  requestUserPosition,
+  getMapCenter,
+  MAP_INITIAL_VIEW_CENTER,
+  LOCATION_PERMISSION_MESSAGE,
+} from "@/lib/geolocation";
 import type { RouteMapValue } from "./RouteMap";
 
 const RouteMap = dynamic(() => import("./RouteMap").then((m) => m.RouteMap), {
@@ -46,8 +51,13 @@ export function CreateRouteForm() {
   const [mapCenter, setMapCenter] = useState<[number, number] | null>(null);
 
   useEffect(() => {
-    setMapCenter(getMapCenter());
-    void requestUserPosition().then((c) => setMapCenter(c));
+    setMapCenter((prev) => getMapCenter() ?? prev);
+    void requestUserPosition()
+      .then((c) => setMapCenter(c))
+      .catch(() => {
+        window.alert(LOCATION_PERMISSION_MESSAGE);
+        setMapCenter((prev) => prev ?? MAP_INITIAL_VIEW_CENTER);
+      });
   }, []);
 
   useEffect(() => {

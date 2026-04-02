@@ -17,7 +17,12 @@ import {
   type PedalAgeGroup,
   type PedalVisibility,
 } from "@/lib/pedals";
-import { requestUserPosition, getMapCenter } from "@/lib/geolocation";
+import {
+  requestUserPosition,
+  getMapCenter,
+  MAP_INITIAL_VIEW_CENTER,
+  LOCATION_PERMISSION_MESSAGE,
+} from "@/lib/geolocation";
 import { StepNavigation } from "./StepNavigation";
 import { EquipmentInput } from "./EquipmentInput";
 import type { RouteMapValue } from "./RouteMap";
@@ -102,8 +107,13 @@ export function CreatePedalForm() {
 
   useEffect(() => {
     if (step === 2) {
-      setMapCenter(getMapCenter());
-      requestUserPosition().then((center) => setMapCenter(center));
+      setMapCenter((prev) => getMapCenter() ?? prev);
+      requestUserPosition()
+        .then((center) => setMapCenter(center))
+        .catch(() => {
+          window.alert(LOCATION_PERMISSION_MESSAGE);
+          setMapCenter((prev) => prev ?? MAP_INITIAL_VIEW_CENTER);
+        });
     }
   }, [step]);
 

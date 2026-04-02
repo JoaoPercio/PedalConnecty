@@ -2,6 +2,7 @@
 
 import type { PendingParticipantRow } from "@/types/pedal-details";
 import { displayNameFromParticipant } from "@/lib/pedal-detail-client";
+import { AvatarImg } from "@/components/AvatarImg";
 
 function ageFromBirthDate(iso: string | null | undefined): number | null {
   if (!iso) return null;
@@ -59,11 +60,7 @@ export function PendingApprovalList({
             <div className="flex min-w-0 items-center gap-3">
               <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full bg-background ring-2 ring-primary/15">
                 {prof?.avatar_url ? (
-                  <img
-                    src={prof.avatar_url}
-                    alt=""
-                    className="h-full w-full object-cover"
-                  />
+                  <AvatarImg src={prof.avatar_url} className="h-full w-full object-cover" />
                 ) : (
                   <span className="flex h-full w-full items-center justify-center text-sm font-semibold text-primary">
                     {name.slice(0, 1).toUpperCase()}

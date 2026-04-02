@@ -3,7 +3,10 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { requestUserPosition } from "@/lib/geolocation";
+import {
+  requestUserPosition,
+  LOCATION_PERMISSION_MESSAGE,
+} from "@/lib/geolocation";
 import {
   fetchBikeServices,
   kindLabel,
@@ -26,6 +29,7 @@ const KIND_ORDER: BikeServiceKind[] = [
 
 export function BikeServicesMap() {
   const [userPos, setUserPos] = useState<[number, number] | null>(null);
+  const [locationDenied, setLocationDenied] = useState(false);
   const [places, setPlaces] = useState<BikeServicePlace[]>([]);
   const [loadingLocation, setLoadingLocation] = useState(true);
   const [loadingPlaces, setLoadingPlaces] = useState(false);
@@ -46,11 +50,20 @@ export function BikeServicesMap() {
   useEffect(() => {
     let cancelled = false;
     setLoadingLocation(true);
-    requestUserPosition().then((pos) => {
-      if (cancelled) return;
-      setUserPos(pos);
-      setLoadingLocation(false);
-    });
+    setLocationDenied(false);
+    requestUserPosition()
+      .then((pos) => {
+        if (cancelled) return;
+        setUserPos(pos);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setLocationDenied(true);
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setLoadingLocation(false);
+      });
     return () => {
       cancelled = true;
     };
@@ -147,6 +160,13 @@ export function BikeServicesMap() {
   }
 
   if (!userPos) {
+    if (locationDenied) {
+      return (
+        <div className="flex min-h-[50vh] flex-1 flex-col items-center justify-center gap-3 bg-surface px-6 text-center">
+          <p className="max-w-md text-sm text-foreground">{LOCATION_PERMISSION_MESSAGE}</p>
+        </div>
+      );
+    }
     return null;
   }
 

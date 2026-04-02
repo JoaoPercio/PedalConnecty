@@ -3,21 +3,19 @@
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
+import { AvatarImg } from "./AvatarImg";
 
 interface ProfileModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-const defaultAvatar =
-  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23616161'%3E%3Cpath d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/%3E%3C/svg%3E";
-
 export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
   const { profileCache, signOut } = useAuth();
 
   if (!isOpen || typeof document === "undefined") return null;
 
-  const avatarUrl = profileCache?.avatarUrl ?? defaultAvatar;
+  const avatarUrl = profileCache?.avatarUrl ?? null;
   const fullName = profileCache?.fullName ?? "Usuário";
   const email = profileCache?.email ?? "";
 
@@ -40,11 +38,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
 
         <div className="flex flex-col items-center gap-4">
           <div className="relative h-20 w-20 overflow-hidden rounded-full bg-gray-100">
-            <img
-              src={avatarUrl}
-              alt=""
-              className="h-full w-full object-cover"
-            />
+            <AvatarImg src={avatarUrl} className="h-full w-full object-cover" />
           </div>
           <div className="text-center">
             <p className="font-medium text-foreground">{fullName}</p>

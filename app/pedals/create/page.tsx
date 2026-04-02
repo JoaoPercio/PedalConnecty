@@ -3,7 +3,6 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import { requestUserPosition } from "@/lib/geolocation";
 import { Navbar } from "@/components/Navbar";
 import { FooterNav } from "@/components/FooterNav";
 import { CreatePedalForm } from "@/components/pedals/CreatePedalForm";
@@ -18,10 +17,6 @@ export default function CreatePedalPage() {
       router.replace("/login");
     }
   }, [user, loading, router]);
-
-  useEffect(() => {
-    if (user) requestUserPosition();
-  }, [user]);
 
   if (loading) {
     return (

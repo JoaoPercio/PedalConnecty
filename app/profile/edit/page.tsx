@@ -43,6 +43,7 @@ export default function ProfileEditPage() {
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null);
   const [currentAvatarUrl, setCurrentAvatarUrl] = useState<string | null>(null);
   const [password, setPassword] = useState("");
+  const [passwordConfirm, setPasswordConfirm] = useState("");
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -77,8 +78,22 @@ export default function ProfileEditPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!user) return;
-    setSaving(true);
     setError(null);
+
+    const pw = password.trim();
+    const pwConfirm = passwordConfirm.trim();
+    if (pw || pwConfirm) {
+      if (pw.length < 6) {
+        setError("A nova senha deve ter no mínimo 6 caracteres.");
+        return;
+      }
+      if (pw !== pwConfirm) {
+        setError("As senhas não coincidem.");
+        return;
+      }
+    }
+
+    setSaving(true);
 
     try {
       let avatarUrl: string | null = currentAvatarUrl;
@@ -109,9 +124,9 @@ export default function ProfileEditPage() {
         return;
       }
 
-      if (password.trim()) {
+      if (pw) {
         const { error: pwdErr } = await supabase.auth.updateUser({
-          password: password.trim(),
+          password: pw,
         });
         if (pwdErr) {
           setError(pwdErr.message);
@@ -273,6 +288,21 @@ export default function ProfileEditPage() {
               onChange={(e) => setPassword(e.target.value)}
               className={inputClass}
               placeholder="••••••••"
+              autoComplete="new-password"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="password_confirm" className={labelClass}>
+              Confirmar nova senha
+            </label>
+            <input
+              id="password_confirm"
+              type="password"
+              value={passwordConfirm}
+              onChange={(e) => setPasswordConfirm(e.target.value)}
+              className={inputClass}
+              placeholder="Repita a nova senha"
               autoComplete="new-password"
             />
           </div>

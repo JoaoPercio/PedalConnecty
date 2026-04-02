@@ -10,7 +10,10 @@ import {
   filterNearbyRoutes,
   type RouteWithCreator,
 } from "@/lib/routes";
-import { requestUserPosition } from "@/lib/geolocation";
+import {
+  requestUserPosition,
+  LOCATION_PERMISSION_MESSAGE,
+} from "@/lib/geolocation";
 import { RouteCard } from "./RouteCard";
 
 export function NearbyRoutesList() {
@@ -24,7 +27,16 @@ export function NearbyRoutesList() {
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const [lat, lng] = await requestUserPosition();
+    let lat: number;
+    let lng: number;
+    try {
+      [lat, lng] = await requestUserPosition();
+    } catch {
+      setError(LOCATION_PERMISSION_MESSAGE);
+      setRoutes([]);
+      setLoading(false);
+      return;
+    }
     setUserPos([lat, lng]);
     const { rows, error: fetchErr } = await fetchRoutesForNearbyList();
     if (fetchErr) {

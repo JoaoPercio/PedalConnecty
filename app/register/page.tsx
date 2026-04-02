@@ -29,6 +29,7 @@ const initialFormData: RegistrationFormData = {
   step3: {
     email: "",
     password: "",
+    password_confirm: "",
     avatar_file: null,
   },
 };
@@ -84,6 +85,11 @@ function validateStep3(data: Step3Data): Partial<Record<keyof Step3Data, string>
   else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) errors.email = "Email inválido.";
   if (!data.password) errors.password = "Senha é obrigatória.";
   else if (data.password.length < 6) errors.password = "Senha deve ter no mínimo 6 caracteres.";
+  if (!data.password_confirm) {
+    errors.password_confirm = "Confirme sua senha.";
+  } else if (data.password !== data.password_confirm) {
+    errors.password_confirm = "As senhas não coincidem.";
+  }
   return errors;
 }
 

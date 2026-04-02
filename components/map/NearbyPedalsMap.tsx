@@ -9,7 +9,10 @@ import { supabase } from "@/lib/supabase";
 import type { PedalDifficulty, PedalTerrain } from "@/lib/pedals";
 import type { PedalVisibility } from "@/lib/pedals";
 import type { PedalAgeGroup } from "@/lib/pedals";
-import { requestUserPosition } from "@/lib/geolocation";
+import {
+  requestUserPosition,
+  LOCATION_PERMISSION_MESSAGE,
+} from "@/lib/geolocation";
 import type { NearbyPedal } from "./PedalMarker";
 import { FilterModal } from "@/components/filters/FilterModal";
 import { PedalFilters } from "@/components/filters/PedalFilters";
@@ -153,7 +156,7 @@ const NearbyMapInner = () => {
       })
       .catch(() => {
         if (!isMounted) return;
-        setError("Não foi possível obter sua localização.");
+        setError(LOCATION_PERMISSION_MESSAGE);
       })
       .finally(() => {
         if (!isMounted) return;
@@ -348,9 +351,9 @@ const NearbyMapInner = () => {
 
   if (!center) {
     return (
-      <div className="flex h-full min-h-0 flex-1 items-center justify-center bg-surface">
-        <p className="text-sm text-text-secondary">
-          Não foi possível carregar o mapa.
+      <div className="flex h-full min-h-0 flex-1 items-center justify-center bg-surface px-6">
+        <p className="max-w-md text-center text-sm text-text-secondary">
+          {error ?? "Não foi possível carregar o mapa."}
         </p>
       </div>
     );

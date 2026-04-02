@@ -71,6 +71,25 @@ export function StepAccount({
           <p className="mt-1 text-sm text-red-600">{errors.password}</p>
         )}
       </div>
+
+      <div>
+        <label htmlFor="password_confirm" className="block text-sm font-medium text-foreground mb-1.5">
+          Confirmar senha
+        </label>
+        <input
+          id="password_confirm"
+          type="password"
+          placeholder="Repita a senha"
+          value={data.password_confirm}
+          onChange={(e) => onChange({ ...data, password_confirm: e.target.value })}
+          className={inputClass}
+          autoComplete="new-password"
+          disabled={disabled}
+        />
+        {errors.password_confirm && (
+          <p className="mt-1 text-sm text-red-600">{errors.password_confirm}</p>
+        )}
+      </div>
     </div>
   );
 }
