@@ -1,4 +1,9 @@
 import { supabase } from "./supabase";
+import type { RouteMapValue } from "@/components/pedals/RouteMap";
+import {
+  parseStoredRouteWaypoints,
+  type RouteWaypointStored,
+} from "@/lib/route-waypoints";
 
 export const NEARBY_MAX_KM = 30;
 
@@ -12,6 +17,8 @@ export interface RouteRow {
   name: string;
   description: string | null;
   route_geojson: RouteGeoJSONLineString;
+  /** Pontos de parada; ausente em linhas antigas antes da migração. */
+  route_waypoints?: unknown;
   distance_km: number | null;
   elevation_gain: number | null;
   user_id: string;
@@ -99,13 +106,14 @@ export function routePointForDistance(
 }
 
 /** Leaflet map value: coordinates as [lat, lng][]. */
-export function routeMapValueFromLineString(geo: RouteGeoJSONLineString): {
-  geojson: RouteGeoJSONLineString;
-  coordinates: [number, number][];
-} {
+export function routeMapValueFromLineString(
+  geo: RouteGeoJSONLineString,
+  route_waypoints?: unknown
+): RouteMapValue {
   return {
     geojson: geo,
     coordinates: geo.coordinates.map(([lng, lat]) => [lat, lng]),
+    waypoints: parseStoredRouteWaypoints(route_waypoints),
   };
 }
 
@@ -125,6 +133,7 @@ export async function fetchRoutesForNearbyList(): Promise<{
       name,
       description,
       route_geojson,
+      route_waypoints,
       distance_km,
       elevation_gain,
       user_id,
@@ -199,6 +208,7 @@ export async function fetchRouteById(
       name,
       description,
       route_geojson,
+      route_waypoints,
       distance_km,
       elevation_gain,
       user_id,
@@ -376,6 +386,7 @@ export interface CreateRouteInput {
   name: string;
   description: string | null;
   route_geojson: RouteGeoJSONLineString;
+  route_waypoints: RouteWaypointStored[];
   distance_km: number | null;
   elevation_gain: number | null;
   user_id: string;
@@ -392,6 +403,7 @@ export async function createRoute(
       name: input.name.trim(),
       description: input.description?.trim() || null,
       route_geojson: input.route_geojson,
+      route_waypoints: input.route_waypoints,
       distance_km: input.distance_km,
       elevation_gain: input.elevation_gain,
       user_id: input.user_id,
@@ -429,6 +441,7 @@ export async function fetchFavoriteRoutesForUser(
       name,
       description,
       route_geojson,
+      route_waypoints,
       distance_km,
       elevation_gain,
       user_id,

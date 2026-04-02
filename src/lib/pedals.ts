@@ -29,6 +29,8 @@ export interface PedalInsert {
   age_group: PedalAgeGroup | null;
   visibility: PedalVisibility;
   route_geojson: unknown;
+  /** JSON: [{ name, lat, lng }] */
+  route_waypoints: unknown;
   cover_image_url: string | null;
   status: string;
 }

@@ -37,7 +37,10 @@ export function RouteCard({
   showRoutePreview = false,
 }: RouteCardProps) {
   const avg = averageRatingFromRows(route.route_ratings);
-  const mapVal = routeMapValueFromLineString(route.route_geojson);
+  const mapVal = routeMapValueFromLineString(
+    route.route_geojson,
+    route.route_waypoints
+  );
   const canPreview =
     showRoutePreview && mapVal.coordinates.length >= 2;
 

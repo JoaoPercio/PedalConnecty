@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { Navbar } from "@/components/Navbar";
@@ -64,10 +65,20 @@ export default function MeusPedaisPage() {
       <Navbar />
 
       <main className="mx-auto max-w-xl px-4 py-6">
-        <h1 className="text-xl font-semibold text-foreground">Meus pedais</h1>
-        <p className="mt-1 text-sm text-text-secondary">
-          Pedais que você organiza e pedais em que participa.
-        </p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-xl font-semibold text-foreground">Meus pedais</h1>
+            <p className="mt-1 text-sm text-text-secondary">
+              Pedais que você organiza e pedais em que participa.
+            </p>
+          </div>
+          <Link
+            href="/pedals/entrar"
+            className="shrink-0 rounded-xl border border-primary/30 bg-surface px-3 py-2 text-sm font-semibold text-primary shadow-sm transition hover:bg-primary/5"
+          >
+            Código de convite
+          </Link>
+        </div>
 
         {loading && (
           <div className="mt-10 flex justify-center">

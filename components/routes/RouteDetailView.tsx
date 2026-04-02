@@ -89,7 +89,10 @@ export function RouteDetailView({ routeId }: RouteDetailViewProps) {
     );
   }
 
-  const mapValue = routeMapValueFromLineString(route.route_geojson);
+  const mapValue = routeMapValueFromLineString(
+    route.route_geojson,
+    route.route_waypoints
+  );
   const avg = averageRatingFromRows(route.route_ratings);
 
   return (
@@ -150,6 +153,18 @@ export function RouteDetailView({ routeId }: RouteDetailViewProps) {
           readOnly
           height="280px"
         />
+        {mapValue.waypoints.length > 0 ? (
+          <div className="mt-3">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
+              Paradas
+            </h3>
+            <ol className="mt-1.5 list-inside list-decimal space-y-1 text-sm text-foreground">
+              {mapValue.waypoints.map((w) => (
+                <li key={w.id}>{w.name.trim() || "Parada"}</li>
+              ))}
+            </ol>
+          </div>
+        ) : null}
       </div>
 
       <RouteRating

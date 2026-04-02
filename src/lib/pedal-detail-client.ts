@@ -155,6 +155,49 @@ export async function fetchMyParticipation(
   return data as PedalParticipantRow;
 }
 
+/**
+ * Entrar num pedal privado com código de convite (aprovação imediata).
+ */
+export async function joinPedalWithInvite(
+  rawCode: string
+): Promise<{ pedalId: string | null; error: Error | null }> {
+  const { data, error } = await supabase.rpc("join_pedal_with_invite", {
+    raw_code: rawCode,
+  });
+  if (error) {
+    return { pedalId: null, error: new Error(error.message) };
+  }
+  if (!data || typeof data !== "string") {
+    return { pedalId: null, error: new Error("Resposta inválida do servidor.") };
+  }
+  return { pedalId: data, error: null };
+}
+
+export async function regeneratePedalInviteCode(
+  pedalId: string
+): Promise<{ code: string | null; error: Error | null }> {
+  const { data, error } = await supabase.rpc("regenerate_pedal_invite_code", {
+    p_pedal_id: pedalId,
+  });
+  if (error) {
+    return { code: null, error: new Error(error.message) };
+  }
+  if (!data || typeof data !== "string") {
+    return { code: null, error: new Error("Resposta inválida do servidor.") };
+  }
+  return { code: data, error: null };
+}
+
+export async function getPedalInviteCodeForCreator(
+  pedalId: string
+): Promise<string | null> {
+  const { data, error } = await supabase.rpc("get_pedal_invite_code_for_creator", {
+    p_pedal_id: pedalId,
+  });
+  if (error || data == null || typeof data !== "string") return null;
+  return data;
+}
+
 export async function requestJoinPedal(
   pedalId: string,
   userId: string

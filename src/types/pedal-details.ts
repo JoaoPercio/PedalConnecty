@@ -34,6 +34,7 @@ export interface PedalDetailRecord {
   age_group: PedalAgeGroup | null;
   visibility: PedalVisibility | string;
   route_geojson: RouteGeoJSON | null;
+  route_waypoints?: unknown;
 }
 
 export interface PedalParticipantRow {

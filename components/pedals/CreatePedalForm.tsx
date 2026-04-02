@@ -23,6 +23,7 @@ import {
   MAP_INITIAL_VIEW_CENTER,
   LOCATION_PERMISSION_MESSAGE,
 } from "@/lib/geolocation";
+import { serializeWaypointsForDb } from "@/lib/route-waypoints";
 import { StepNavigation } from "./StepNavigation";
 import { EquipmentInput } from "./EquipmentInput";
 import type { RouteMapValue } from "./RouteMap";
@@ -84,6 +85,7 @@ export function CreatePedalForm() {
   const [routeValue, setRouteValue] = useState<RouteMapValue>({
     geojson: null,
     coordinates: [],
+    waypoints: [],
   });
   const [distanceKm, setDistanceKm] = useState<number | null>(null);
   const [elevationGain, setElevationGain] = useState<number | null>(null);
@@ -248,6 +250,7 @@ export function CreatePedalForm() {
       age_group: ageGroup,
       visibility,
       route_geojson: routeValue.geojson,
+      route_waypoints: serializeWaypointsForDb(routeValue.waypoints),
       cover_image_url: null,
     });
 
@@ -404,6 +407,10 @@ export function CreatePedalForm() {
               </li>
               <li>No celular, use dois dedos para aproximar ou afastar o mapa</li>
               <li>Use &quot;Desfazer&quot; se precisar corrigir o último ponto</li>
+              <li>
+                Depois de finalizar o traçado, use &quot;Adicionar parada no mapa&quot;
+                para marcar postos ou outros pontos (com nome)
+              </li>
             </ul>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -411,7 +418,7 @@ export function CreatePedalForm() {
               <button
                 type="button"
                 onClick={() => {
-                  setRouteValue({ geojson: null, coordinates: [] });
+                  setRouteValue({ geojson: null, coordinates: [], waypoints: [] });
                   setMapKey((k) => k + 1);
                 }}
                 className="rounded-xl border border-gray-200 bg-surface px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-gray-50"
@@ -509,6 +516,12 @@ export function CreatePedalForm() {
                 </option>
               ))}
             </select>
+            {visibility === "private" && (
+              <p className="mt-2 text-sm text-text-secondary">
+                Será criado um código de convite para partilhar. Quem tiver o código entra no pedal
+                diretamente; não aparece no mapa de pedais perto.
+              </p>
+            )}
           </div>
         </div>
       )}

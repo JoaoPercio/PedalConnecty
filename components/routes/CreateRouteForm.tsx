@@ -13,6 +13,7 @@ import {
   lineStringToStart,
   type RouteGeoJSONLineString,
 } from "@/lib/routes";
+import { serializeWaypointsForDb } from "@/lib/route-waypoints";
 import {
   requestUserPosition,
   getMapCenter,
@@ -42,6 +43,7 @@ export function CreateRouteForm() {
   const [routeValue, setRouteValue] = useState<RouteMapValue>({
     geojson: null,
     coordinates: [],
+    waypoints: [],
   });
   const [distanceKm, setDistanceKm] = useState<number | null>(null);
   const [elevationM, setElevationM] = useState<number | null>(null);
@@ -120,6 +122,7 @@ export function CreateRouteForm() {
       name: name.trim(),
       description: description.trim() || null,
       route_geojson: geo,
+      route_waypoints: serializeWaypointsForDb(routeValue.waypoints),
       distance_km: distanceKm,
       elevation_gain: elev,
       user_id: user.id,
@@ -182,6 +185,10 @@ export function CreateRouteForm() {
             Obtendo localização…
           </div>
         )}
+        <p className="mt-2 text-xs text-text-secondary">
+          Com a rota pronta, use &quot;Adicionar parada no mapa&quot; para marcar
+          postos ou paradas e dar um nome a cada uma.
+        </p>
         <div className="mt-2 flex flex-wrap gap-4 text-sm text-text-secondary">
           <span>
             Distância:{" "}

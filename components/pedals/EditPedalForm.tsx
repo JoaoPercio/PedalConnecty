@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   updatePedal,
@@ -23,6 +24,8 @@ import {
   MAP_INITIAL_VIEW_CENTER,
   LOCATION_PERMISSION_MESSAGE,
 } from "@/lib/geolocation";
+import { parseStoredRouteWaypoints, serializeWaypointsForDb } from "@/lib/route-waypoints";
+import { regeneratePedalInviteCode } from "@/lib/pedal-detail-client";
 import { StepNavigation } from "./StepNavigation";
 import { EquipmentInput } from "./EquipmentInput";
 import type { RouteGeoJSON, RouteMapValue } from "./RouteMap";
@@ -65,15 +68,19 @@ const inputClass =
   "w-full rounded-xl border border-gray-200 bg-surface px-4 py-3 text-foreground placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-shadow text-base";
 const labelClass = "mb-1.5 block text-sm font-medium text-foreground";
 
-function geojsonToRouteValue(route_geojson: unknown): RouteMapValue {
+function geojsonToRouteValue(
+  route_geojson: unknown,
+  route_waypoints?: unknown
+): RouteMapValue {
+  const wps = parseStoredRouteWaypoints(route_waypoints);
   const g = route_geojson as RouteGeoJSON | null;
   if (!g || g.type !== "LineString" || !Array.isArray(g.coordinates)) {
-    return { geojson: null, coordinates: [] };
+    return { geojson: null, coordinates: [], waypoints: wps };
   }
   const coordinates = g.coordinates.map(
     ([lng, lat]) => [lat, lng] as [number, number]
   );
-  return { geojson: g, coordinates };
+  return { geojson: g, coordinates, waypoints: wps };
 }
 
 export interface PedalEditInitial {
@@ -95,7 +102,9 @@ export interface PedalEditInitial {
   required_equipment: string[];
   age_group: PedalAgeGroup | null;
   visibility: string;
+  invite_code?: string | null;
   route_geojson: unknown;
+  route_waypoints?: unknown;
   cover_image_url: string | null;
 }
 
@@ -124,7 +133,7 @@ export function EditPedalForm({ initial }: EditPedalFormProps) {
   const [coverPreviewUrl, setCoverPreviewUrl] = useState<string | null>(null);
 
   const [routeValue, setRouteValue] = useState<RouteMapValue>(() =>
-    geojsonToRouteValue(initial.route_geojson)
+    geojsonToRouteValue(initial.route_geojson, initial.route_waypoints)
   );
   const [distanceKm, setDistanceKm] = useState<number | null>(
     initial.distance_km
@@ -150,9 +159,13 @@ export function EditPedalForm({ initial }: EditPedalFormProps) {
       ? initial.visibility
       : "public") as PedalVisibility
   );
+  const [inviteCode, setInviteCode] = useState<string | null>(
+    initial.invite_code ?? null
+  );
+  const [regeneratingInvite, setRegeneratingInvite] = useState(false);
   const [mapKey, setMapKey] = useState(0);
   const [mapCenter, setMapCenter] = useState<[number, number] | null>(() => {
-    const rv = geojsonToRouteValue(initial.route_geojson);
+    const rv = geojsonToRouteValue(initial.route_geojson, initial.route_waypoints);
     if (rv.coordinates.length >= 1) {
       return [rv.coordinates[0][0], rv.coordinates[0][1]];
     }
@@ -325,6 +338,7 @@ export function EditPedalForm({ initial }: EditPedalFormProps) {
       age_group: ageGroup,
       visibility,
       route_geojson: routeValue.geojson,
+      route_waypoints: serializeWaypointsForDb(routeValue.waypoints),
       cover_image_url: coverUrl,
     });
 
@@ -473,6 +487,10 @@ export function EditPedalForm({ initial }: EditPedalFormProps) {
               <li>Continue clicando para adicionar pontos (mínimo 3)</li>
               <li>Para finalizar, clique no último ponto ou use o botão &quot;Finalizar&quot;</li>
               <li>Use o botão de desfazer caso precise corrigir a rota</li>
+              <li>
+                Com o traçado pronto, use &quot;Adicionar parada no mapa&quot; para
+                postos ou outras paradas (com nome)
+              </li>
             </ul>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -480,7 +498,7 @@ export function EditPedalForm({ initial }: EditPedalFormProps) {
               <button
                 type="button"
                 onClick={() => {
-                  setRouteValue({ geojson: null, coordinates: [] });
+                  setRouteValue({ geojson: null, coordinates: [], waypoints: [] });
                   setMapKey((k) => k + 1);
                 }}
                 className="rounded-xl border border-gray-200 bg-surface px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-gray-50"
@@ -580,6 +598,59 @@ export function EditPedalForm({ initial }: EditPedalFormProps) {
                 </option>
               ))}
             </select>
+            {visibility === "private" && (
+              <div className="mt-3 rounded-xl border border-gray-200 bg-gray-50/80 p-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
+                  Código de convite
+                </p>
+                {inviteCode ? (
+                  <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <code className="flex-1 rounded-lg bg-surface px-3 py-2 font-mono text-sm font-semibold tracking-wider">
+                      {inviteCode}
+                    </code>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void navigator.clipboard.writeText(inviteCode).then(() => {
+                            toast.success("Código copiado");
+                          });
+                        }}
+                        className="rounded-lg border border-primary/30 px-3 py-2 text-sm font-semibold text-primary"
+                      >
+                        Copiar
+                      </button>
+                      <button
+                        type="button"
+                        disabled={regeneratingInvite}
+                        onClick={async () => {
+                          setRegeneratingInvite(true);
+                          const { code, error } = await regeneratePedalInviteCode(
+                            initial.id
+                          );
+                          setRegeneratingInvite(false);
+                          if (error) {
+                            toast.error(error.message);
+                            return;
+                          }
+                          if (code) {
+                            setInviteCode(code);
+                            toast.success("Novo código gerado. O anterior deixa de funcionar.");
+                          }
+                        }}
+                        className="rounded-lg border border-gray-300 bg-surface px-3 py-2 text-sm font-semibold text-foreground disabled:opacity-50"
+                      >
+                        {regeneratingInvite ? "…" : "Novo código"}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="mt-2 text-sm text-text-secondary">
+                    Será gerado automaticamente ao guardar como privado.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
