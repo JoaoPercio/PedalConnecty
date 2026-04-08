@@ -83,6 +83,29 @@ function LojasIcon({ className }: { className?: string }) {
   );
 }
 
+function MapAlertsIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden
+    >
+      <path d="M12 18V5" />
+      <path d="M15 13a4 4 0 0 0-6 0" />
+      <path d="M12 2v1" />
+      <circle cx="12" cy="18" r="3" />
+      <path d="M4.5 10h2" />
+      <path d="M17.5 10h2" />
+    </svg>
+  );
+}
+
 const linkClass = (active: boolean) =>
   `flex flex-col items-center gap-1 rounded-lg px-4 py-2 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/30 ${
     active
@@ -96,6 +119,7 @@ export function FooterNav() {
   const isNearby = pathname === "/home";
   const isRoutes = pathname.startsWith("/routes");
   const isBikeShops = pathname === "/bike-shops";
+  const isMapAlerts = pathname === "/map-alerts";
 
   return (
     <nav
@@ -130,6 +154,16 @@ export function FooterNav() {
       >
         <RotasIcon className="h-6 w-6" />
         <span className="text-xs font-medium">Rotas</span>
+      </Link>
+
+      <Link
+        href="/map-alerts"
+        className={linkClass(isMapAlerts)}
+        aria-label="Alertas no mapa"
+        aria-current={isMapAlerts ? "page" : undefined}
+      >
+        <MapAlertsIcon className="h-6 w-6" />
+        <span className="text-xs font-medium">Alertas</span>
       </Link>
 
       <Link

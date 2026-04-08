@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import type {
   ApprovedParticipant,
@@ -134,11 +135,13 @@ export function PedalDetails({ initialPedal }: PedalDetailsProps) {
     setJoining(true);
     const { error } = await requestJoinPedal(pedal.id, user.id);
     setJoining(false);
-    if (!error) {
-      setJustRequested(true);
-      const row = await fetchMyParticipation(pedal.id, user.id);
-      setParticipation(row);
+    if (error) {
+      toast.error(error.message);
+      return;
     }
+    setJustRequested(true);
+    const row = await fetchMyParticipation(pedal.id, user.id);
+    setParticipation(row);
   }, [user?.id, pedal.id]);
 
   const onApprove = useCallback(

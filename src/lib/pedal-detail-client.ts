@@ -198,10 +198,41 @@ export async function getPedalInviteCodeForCreator(
   return data;
 }
 
+const FEMALE_ONLY_JOIN_BLOCKED_MESSAGE =
+  "Este pedal é exclusivo para mulheres. Só é possível solicitar participação com gênero feminino no perfil.";
+
+function profileAllowsFemaleOnlyPedal(
+  gender: string | null | undefined
+): boolean {
+  return gender === "feminino";
+}
+
 export async function requestJoinPedal(
   pedalId: string,
   userId: string
 ): Promise<{ error: Error | null }> {
+  const [{ data: pedal, error: pedalError }, { data: profile, error: profileError }] =
+    await Promise.all([
+      supabase
+        .from("pedals")
+        .select("visibility, creator_id")
+        .eq("id", pedalId)
+        .maybeSingle(),
+      supabase.from("profiles").select("gender").eq("id", userId).maybeSingle(),
+    ]);
+
+  if (pedalError) return { error: pedalError };
+  if (!pedal) return { error: new Error("Pedal não encontrado.") };
+  if (profileError) return { error: profileError };
+
+  if (
+    pedal.visibility === "female_only" &&
+    pedal.creator_id !== userId &&
+    !profileAllowsFemaleOnlyPedal(profile?.gender)
+  ) {
+    return { error: new Error(FEMALE_ONLY_JOIN_BLOCKED_MESSAGE) };
+  }
+
   const { data: existing, error: findError } = await supabase
     .from("pedal_participants")
     .select("id, status")
