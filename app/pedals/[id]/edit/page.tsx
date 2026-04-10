@@ -27,7 +27,7 @@ export default function EditPedalPage() {
       const { data, error } = await supabase
         .from("pedals")
         .select(
-          "id,name,description,date,start_lat,start_lng,end_lat,end_lng,distance_km,elevation_gain,difficulty,terrain,max_participants,requires_safety_equipment,required_equipment,age_group,visibility,invite_code,route_geojson,route_waypoints,cover_image_url,creator_id"
+          "id,name,description,date,start_location,start_lat,start_lng,end_lat,end_lng,distance_km,elevation_gain,difficulty,terrain,max_participants,requires_safety_equipment,required_equipment,age_group,visibility,invite_code,route_geojson,route_waypoints,cover_image_url,creator_id"
         )
         .eq("id", id)
         .maybeSingle();

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type {
@@ -10,6 +10,10 @@ import type {
   StepAccount as Step3Data,
 } from "@/types/registration";
 import { registerWithProfile } from "@/lib/registration";
+import {
+  validateStep1PersonalInfo,
+} from "@/lib/registration-validation";
+import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 import { StepIndicator } from "./components/StepIndicator";
 import { StepPersonalInfo } from "./components/StepPersonalInfo";
 import { StepSkillLevel } from "./components/StepSkillLevel";
@@ -67,12 +71,7 @@ function AppIcon() {
 }
 
 function validateStep1(data: Step1Data): Partial<Record<keyof Step1Data, string>> {
-  const errors: Partial<Record<keyof Step1Data, string>> = {};
-  if (!data.first_name?.trim()) errors.first_name = "Nome é obrigatório.";
-  if (!data.last_name?.trim()) errors.last_name = "Sobrenome é obrigatório.";
-  if (!data.birth_date) errors.birth_date = "Data de nascimento é obrigatória.";
-  if (!data.city?.trim()) errors.city = "Cidade é obrigatória.";
-  return errors;
+  return validateStep1PersonalInfo(data);
 }
 
 function validateStep2(_data: Step2Data): Record<string, never> {
@@ -99,7 +98,12 @@ export default function RegisterPage() {
   const [formData, setFormData] = useState<RegistrationFormData>(initialFormData);
   const [step1Errors, setStep1Errors] = useState<Partial<Record<keyof Step1Data, string>>>({});
   const [step3Errors, setStep3Errors] = useState<Partial<Record<keyof Step3Data, string>>>({});
+  /** Evita mostrar erros do passo 3 até envio explícito (submit ou botão). */
+  const [step3SubmitTried, setStep3SubmitTried] = useState(false);
+  /** Evita clique fantasma no mesmo pixel ao trocar "Próximo" por "Criar conta". */
+  const [step3PrimaryReady, setStep3PrimaryReady] = useState(false);
   const [loading, setLoading] = useState(false);
+  const submitStep3Lock = useRef(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null);
@@ -111,6 +115,16 @@ export default function RegisterPage() {
     }
     setAvatarPreviewUrl(null);
   }, [formData.step3.avatar_file]);
+
+  useEffect(() => {
+    if (step !== 3) {
+      setStep3PrimaryReady(false);
+      return;
+    }
+    setStep3PrimaryReady(false);
+    const t = window.setTimeout(() => setStep3PrimaryReady(true), 200);
+    return () => window.clearTimeout(t);
+  }, [step]);
 
   const setStep1 = useCallback((step1: Step1Data) => {
     setFormData((prev: RegistrationFormData) => ({ ...prev, step1 }));
@@ -140,30 +154,57 @@ export default function RegisterPage() {
   };
 
   const handleNext = () => {
-    if (step < 3 && canGoNext()) setStep(step + 1);
+    if (step >= 3) return;
+    if (!canGoNext()) return;
+    if (step === 2) {
+      setStep3Errors({});
+      setStep3SubmitTried(false);
+    }
+    setStep(step + 1);
   };
 
   const handleBack = () => {
-    if (step > 1) setStep(step - 1);
+    if (step > 1) {
+      if (step === 3) {
+        setStep3Errors({});
+        setStep3SubmitTried(false);
+      }
+      setStep(step - 1);
+    }
     setSubmitError(null);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const errs = validateStep3(formData.step3);
-    setStep3Errors(errs);
-    if (Object.keys(errs).length > 0) return;
+  /** "Criar conta" é type="button" para o mouseup do "Próximo" não disparar envio; Enter usa onSubmit. */
+  const submitStep3 = async () => {
+    if (submitStep3Lock.current) return;
+    submitStep3Lock.current = true;
+    try {
+      setStep3SubmitTried(true);
+      const errs = validateStep3(formData.step3);
+      setStep3Errors(errs);
+      if (Object.keys(errs).length > 0) return;
 
-    setLoading(true);
-    setSubmitError(null);
-    const { error } = await registerWithProfile(formData);
-    setLoading(false);
-
-    if (error) {
-      setSubmitError(error.message);
-      return;
+      setLoading(true);
+      setSubmitError(null);
+      try {
+        const { error } = await registerWithProfile(formData);
+        if (error) {
+          setSubmitError(error.message);
+          return;
+        }
+        router.push("/login?registered=1");
+      } finally {
+        setLoading(false);
+      }
+    } finally {
+      submitStep3Lock.current = false;
     }
-    router.push("/login?registered=1");
+  };
+
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (step !== 3) return;
+    void submitStep3();
   };
 
   return (
@@ -179,13 +220,25 @@ export default function RegisterPage() {
 
         <StepIndicator currentStep={step} />
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+        <form noValidate onSubmit={handleFormSubmit} className="flex flex-col gap-6">
           {step === 1 && (
-            <StepPersonalInfo
-              data={formData.step1}
-              onChange={setStep1}
-              errors={step1Errors}
-            />
+            <>
+              <GoogleSignInButton disabled={loading} />
+              <div className="relative flex items-center justify-center">
+                <span
+                  className="absolute inset-x-0 top-1/2 h-px bg-gray-200"
+                  aria-hidden
+                />
+                <span className="relative bg-surface px-3 text-xs text-text-secondary uppercase tracking-wide">
+                  ou cadastre-se com email
+                </span>
+              </div>
+              <StepPersonalInfo
+                data={formData.step1}
+                onChange={setStep1}
+                errors={step1Errors}
+              />
+            </>
           )}
           {step === 2 && (
             <StepSkillLevel
@@ -197,7 +250,7 @@ export default function RegisterPage() {
             <StepAccount
               data={formData.step3}
               onChange={setStep3}
-              errors={step3Errors}
+              errors={step3SubmitTried ? step3Errors : {}}
               avatarPreviewUrl={avatarPreviewUrl}
               disabled={loading}
             />
@@ -232,8 +285,9 @@ export default function RegisterPage() {
               </button>
             ) : (
               <button
-                type="submit"
-                disabled={loading}
+                type="button"
+                disabled={loading || !step3PrimaryReady}
+                onClick={() => void submitStep3()}
                 className="flex-1 py-3.5 rounded-xl font-medium text-white bg-gradient-to-r from-[#1B5E20] to-[#43A047] hover:opacity-95 active:opacity-90 disabled:opacity-70 transition-opacity shadow-md shadow-primary/20"
               >
                 {loading ? "Criando conta…" : "Criar conta"}

@@ -13,13 +13,15 @@ export interface CachedProfile {
 
 export interface ProfileRow {
   id: string;
-  first_name: string;
-  last_name: string;
+  first_name: string | null;
+  last_name: string | null;
+  birth_date: string | null;
   avatar_url: string | null;
   city: string | null;
   gender: string | null;
   skill_level: string | null;
   completed_pedals_count: number;
+  registration_completed_at: string | null;
 }
 
 export function getCachedProfile(): CachedProfile | null {
@@ -63,7 +65,7 @@ export async function getProfile(userId: string): Promise<ProfileRow | null> {
   const { data, error } = await supabase
     .from("profiles")
     .select(
-      "id, first_name, last_name, avatar_url, city, gender, skill_level, completed_pedals_count"
+      "id, first_name, last_name, birth_date, avatar_url, city, gender, skill_level, completed_pedals_count, registration_completed_at"
     )
     .eq("id", userId)
     .single();
@@ -73,14 +75,19 @@ export async function getProfile(userId: string): Promise<ProfileRow | null> {
   return {
     ...row,
     completed_pedals_count: row.completed_pedals_count ?? 0,
+    registration_completed_at: row.registration_completed_at ?? null,
   };
 }
 
 export interface ProfileUpdate {
+  first_name?: string | null;
+  last_name?: string | null;
+  birth_date?: string | null;
   avatar_url?: string | null;
   city?: string | null;
   gender?: string | null;
   skill_level?: string | null;
+  registration_completed_at?: string | null;
 }
 
 export async function updateProfile(

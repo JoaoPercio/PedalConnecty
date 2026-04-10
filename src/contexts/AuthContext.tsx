@@ -8,16 +8,17 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import {
-  getCachedProfile,
   setCachedProfile,
   clearCachedProfile,
   getProfile,
   type CachedProfile,
 } from "@/lib/profile";
+import { isProfileRegistrationComplete } from "@/lib/profile-registration";
+import { isExemptFromRegistrationGate } from "@/lib/auth-paths";
 import { signOut as authSignOut } from "@/lib/auth";
 
 interface AuthState {
@@ -26,36 +27,58 @@ interface AuthState {
   loading: boolean;
 }
 
+interface ProfileGateState {
+  loading: boolean;
+  isComplete: boolean;
+}
+
 interface AuthContextValue extends AuthState {
   signOut: () => Promise<void>;
   refreshProfileCache: () => Promise<void>;
+  /** Só relevante com sessão: perfil tem cadastro completo. */
+  registrationComplete: boolean;
+  /** A carregar estado do perfil para o gate (rotas protegidas). */
+  profileGateLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [user, setUser] = useState<User | null>(null);
-  const [profileCache, setProfileCache] = useState<CachedProfile | null>(null);
+  const [profileCache, setProfileCacheState] = useState<CachedProfile | null>(
+    null
+  );
   const [loading, setLoading] = useState(true);
+  const [profileGate, setProfileGate] = useState<ProfileGateState>({
+    loading: false,
+    isComplete: true,
+  });
+
+  const syncProfileGateFromRow = useCallback(
+    (profile: Awaited<ReturnType<typeof getProfile>>) => {
+      setProfileGate({
+        loading: false,
+        isComplete: isProfileRegistrationComplete(profile),
+      });
+    },
+    []
+  );
 
   const refreshProfileCache = useCallback(async () => {
     const { data } = await supabase.auth.getSession();
     const u = data?.session?.user;
     if (!u) return;
-    const cached = getCachedProfile();
-    if (cached?.userId === u.id && cached.avatarUrl) {
-      setProfileCache(cached);
-      return;
-    }
     let profile = await getProfile(u.id);
     if (!profile) {
-      // First login right after register can race profile/storage availability.
       await new Promise((resolve) => setTimeout(resolve, 250));
       profile = await getProfile(u.id);
     }
+    syncProfileGateFromRow(profile);
     const fullName = profile
-      ? [profile.first_name, profile.last_name].filter(Boolean).join(" ") || "Usuário"
+      ? [profile.first_name, profile.last_name].filter(Boolean).join(" ") ||
+        "Usuário"
       : "Usuário";
     const next: CachedProfile = {
       userId: u.id,
@@ -65,22 +88,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       completedPedalsCount: profile?.completed_pedals_count ?? 0,
     };
     setCachedProfile(next);
-    setProfileCache(next);
-  }, []);
+    setProfileCacheState(next);
+  }, [syncProfileGateFromRow]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       const u = data?.session?.user ?? null;
       setUser(u);
       if (u) {
-        const cached = getCachedProfile();
-        if (cached?.userId === u.id) {
-          setProfileCache(cached);
-        } else {
-          refreshProfileCache();
-        }
+        setProfileGate({ loading: true, isComplete: false });
+        void refreshProfileCache();
       } else {
-        setProfileCache(null);
+        setProfileCacheState(null);
+        setProfileGate({ loading: false, isComplete: true });
       }
       setLoading(false);
     });
@@ -91,28 +111,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const u = session?.user ?? null;
       setUser(u);
       if (!u) {
-        setProfileCache(null);
+        setProfileCacheState(null);
         clearCachedProfile();
+        setProfileGate({ loading: false, isComplete: true });
       } else {
-        // Always refresh on sign-in to avoid stale first-login avatar cache.
         if (event === "SIGNED_IN") {
-          refreshProfileCache();
+          setProfileGate({ loading: true, isComplete: false });
+          void refreshProfileCache();
           return;
         }
-        const cached = getCachedProfile();
-        if (cached?.userId === u.id && cached.avatarUrl) setProfileCache(cached);
-        else refreshProfileCache();
+        if (event === "USER_UPDATED") {
+          void refreshProfileCache();
+        }
       }
     });
 
     return () => subscription.unsubscribe();
   }, [refreshProfileCache]);
 
+  useEffect(() => {
+    if (loading) return;
+    if (!user) return;
+    if (profileGate.loading) return;
+
+    if (profileGate.isComplete && pathname === "/register/complete") {
+      router.replace("/home");
+      return;
+    }
+
+    if (
+      !profileGate.isComplete &&
+      !isExemptFromRegistrationGate(pathname, true)
+    ) {
+      router.replace("/register/complete");
+    }
+  }, [user, loading, profileGate, pathname, router]);
+
+  const showGateSpinner =
+    !!user &&
+    profileGate.loading &&
+    !isExemptFromRegistrationGate(pathname, true);
+
   const signOut = useCallback(async () => {
     await authSignOut();
     clearCachedProfile();
     setUser(null);
-    setProfileCache(null);
+    setProfileCacheState(null);
+    setProfileGate({ loading: false, isComplete: true });
     router.replace("/login");
   }, [router]);
 
@@ -122,9 +167,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loading,
     signOut,
     refreshProfileCache,
+    registrationComplete: profileGate.isComplete,
+    profileGateLoading: profileGate.loading,
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      {showGateSpinner ? (
+        <div className="flex min-h-screen items-center justify-center bg-background">
+          <p className="text-text-secondary">Carregando…</p>
+        </div>
+      ) : (
+        children
+      )}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {

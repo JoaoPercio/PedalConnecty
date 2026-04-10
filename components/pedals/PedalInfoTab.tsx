@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -218,16 +218,31 @@ export function PedalInfoTab({
     Array.isArray(pedal.route_geojson.coordinates) &&
     pedal.route_geojson.coordinates.length >= 2;
 
-  const routeValue: RouteMapValue | null = hasRoute
-    ? {
-        geojson: pedal.route_geojson,
-        coordinates: pedal.route_geojson!.coordinates.map(([lng, lat]) => [
-          lat,
-          lng,
-        ]) as [number, number][],
-        waypoints: parseStoredRouteWaypoints(pedal.route_waypoints),
-      }
-    : null;
+  const routeValue: RouteMapValue | null = useMemo(() => {
+    if (!hasRoute || !pedal.route_geojson) return null;
+    return {
+      geojson: pedal.route_geojson,
+      coordinates: pedal.route_geojson.coordinates.map(([lng, lat]) => [
+        lat,
+        lng,
+      ]) as [number, number][],
+      waypoints: parseStoredRouteWaypoints(pedal.route_waypoints),
+    };
+  }, [hasRoute, pedal.route_geojson, pedal.route_waypoints]);
+
+  const meetingCoords: { lat: number; lng: number } | null =
+    pedal.start_lat != null && pedal.start_lng != null
+      ? { lat: Number(pedal.start_lat), lng: Number(pedal.start_lng) }
+      : routeValue && routeValue.coordinates.length >= 1
+        ? {
+            lat: routeValue.coordinates[0][0],
+            lng: routeValue.coordinates[0][1],
+          }
+        : null;
+
+  const meetingDescription = pedal.start_location?.trim() ?? "";
+  const showMeetingSection =
+    meetingDescription.length > 0 || meetingCoords !== null || hasRoute;
 
   const equipmentText =
     pedal.required_equipment?.length > 0
@@ -536,6 +551,45 @@ export function PedalInfoTab({
       </div>
 
       {participateBlock}
+
+      {showMeetingSection && (
+        <section className="rounded-xl border border-primary/20 bg-primary/5 p-4 shadow-sm">
+          <p className="text-sm font-semibold text-foreground">Ponto de encontro</p>
+          {meetingDescription ? (
+            <p className="mt-2 whitespace-pre-line text-sm text-foreground">
+              {meetingDescription}
+            </p>
+          ) : meetingCoords ? (
+            <p className="mt-2 text-sm text-text-secondary">
+              Encontro no início da rota (primeiro ponto no mapa abaixo).
+            </p>
+          ) : hasRoute ? (
+            <p className="mt-2 text-sm text-text-secondary">
+              O trajeto no mapa abaixo começa no ponto de encontro.
+            </p>
+          ) : null}
+          {meetingCoords ? (
+            <div className="mt-3 flex flex-wrap gap-2">
+              <a
+                href={`https://www.google.com/maps?q=${meetingCoords.lat},${meetingCoords.lng}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center rounded-xl border border-primary/30 bg-surface px-4 py-2.5 text-sm font-semibold text-primary shadow-sm transition hover:bg-primary/5"
+              >
+                Abrir no Google Maps
+              </a>
+              <a
+                href={`https://waze.com/ul?ll=${meetingCoords.lat},${meetingCoords.lng}&navigate=yes`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center rounded-xl border border-primary/30 bg-surface px-4 py-2.5 text-sm font-semibold text-primary shadow-sm transition hover:bg-primary/5"
+              >
+                Abrir no Waze
+              </a>
+            </div>
+          ) : null}
+        </section>
+      )}
 
       {hasRoute && routeValue && (
         <section className="space-y-2">

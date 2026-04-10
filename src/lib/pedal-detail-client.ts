@@ -140,6 +140,60 @@ export async function withdrawFromPedalBeforeStart(
   return { error: error ?? null };
 }
 
+/**
+ * Organizer removes an approved (or other) participant row while the pedal is scheduled.
+ * Cannot remove the organizer's own row.
+ */
+export async function removeParticipantAsOrganizer(
+  pedalId: string,
+  organizerId: string,
+  participantRowId: string
+): Promise<{ error: Error | null }> {
+  const { data: pedal, error: pedalError } = await supabase
+    .from("pedals")
+    .select("id, status, creator_id")
+    .eq("id", pedalId)
+    .maybeSingle();
+
+  if (pedalError) return { error: pedalError };
+  if (!pedal) return { error: new Error("Pedal não encontrado.") };
+  if (pedal.creator_id !== organizerId) {
+    return { error: new Error("Apenas o organizador pode remover participantes.") };
+  }
+  if (pedal.status !== "scheduled") {
+    return {
+      error: new Error(
+        "Só é possível remover participantes enquanto o pedal está agendado."
+      ),
+    };
+  }
+
+  const { data: row, error: rowError } = await supabase
+    .from("pedal_participants")
+    .select("id, user_id")
+    .eq("id", participantRowId)
+    .eq("pedal_id", pedalId)
+    .maybeSingle();
+
+  if (rowError) return { error: rowError };
+  if (!row) return { error: new Error("Participante não encontrado.") };
+  if (row.user_id === organizerId) {
+    return {
+      error: new Error(
+        "O organizador não pode remover-se da lista de participantes."
+      ),
+    };
+  }
+
+  const { error } = await supabase
+    .from("pedal_participants")
+    .delete()
+    .eq("id", participantRowId)
+    .eq("pedal_id", pedalId);
+
+  return { error: error ?? null };
+}
+
 export async function fetchMyParticipation(
   pedalId: string,
   userId: string

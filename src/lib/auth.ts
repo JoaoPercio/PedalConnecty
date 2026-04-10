@@ -1,5 +1,20 @@
 import { supabase } from "./supabase";
 
+export async function signInWithGoogle() {
+  const origin =
+    typeof window !== "undefined" ? window.location.origin : "";
+  return await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo: `${origin}/auth/callback`,
+      queryParams: {
+        access_type: "offline",
+        prompt: "consent",
+      },
+    },
+  });
+}
+
 export async function signUp(email: string, password: string) {
   return await supabase.auth.signUp({
     email,

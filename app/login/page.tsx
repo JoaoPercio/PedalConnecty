@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signIn } from "@/lib/auth";
 import { getProfile, setCachedProfile } from "@/lib/profile";
+import { isProfileRegistrationComplete } from "@/lib/profile-registration";
+import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 
 function AppIcon() {
   return (
@@ -57,6 +59,10 @@ export default function LoginPage() {
     const userEmail = data?.user?.email ?? email;
     if (userId) {
       const profile = await getProfile(userId);
+      if (!isProfileRegistrationComplete(profile)) {
+        router.replace("/register/complete");
+        return;
+      }
       const fullName = profile
         ? [profile.first_name, profile.last_name].filter(Boolean).join(" ") || "Usuário"
         : "Usuário";
@@ -81,6 +87,16 @@ export default function LoginPage() {
             PedalConnect
           </h1>
           <p className="text-sm text-text-secondary">Entre na sua conta</p>
+        </div>
+
+        <div className="flex flex-col gap-4 mb-2">
+          <GoogleSignInButton disabled={loading} />
+          <div className="relative flex items-center justify-center">
+            <span className="absolute inset-x-0 top-1/2 h-px bg-gray-200" aria-hidden />
+            <span className="relative bg-surface px-3 text-xs text-text-secondary uppercase tracking-wide">
+              ou
+            </span>
+          </div>
         </div>
 
         <form onSubmit={handleLogin} className="flex flex-col gap-5">

@@ -13,6 +13,7 @@ import {
   fetchApprovedParticipants,
   fetchMyParticipation,
   fetchPendingParticipants,
+  removeParticipantAsOrganizer,
   requestJoinPedal,
   updateParticipantStatus,
 } from "@/lib/pedal-detail-client";
@@ -45,6 +46,9 @@ export function PedalDetails({ initialPedal }: PedalDetailsProps) {
   const [participantsLoading, setParticipantsLoading] = useState(false);
   const [participantsFetched, setParticipantsFetched] = useState(false);
   const [pendingBusyId, setPendingBusyId] = useState<string | null>(null);
+  const [removeApprovedBusyId, setRemoveApprovedBusyId] = useState<string | null>(
+    null
+  );
 
   const isOwner = !!user?.id && user.id === pedal.creator_id;
 
@@ -164,6 +168,33 @@ export function PedalDetails({ initialPedal }: PedalDetailsProps) {
     [refreshParticipants]
   );
 
+  const onRemoveApproved = useCallback(
+    async (participantRowId: string, displayName: string) => {
+      if (!user?.id) return;
+      if (
+        !window.confirm(
+          `Remover ${displayName} deste pedal? A pessoa pode voltar a pedir para participar.`
+        )
+      ) {
+        return;
+      }
+      setRemoveApprovedBusyId(participantRowId);
+      const { error } = await removeParticipantAsOrganizer(
+        pedal.id,
+        user.id,
+        participantRowId
+      );
+      setRemoveApprovedBusyId(null);
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      toast.success("Participante removido.");
+      await refreshParticipants();
+    },
+    [user?.id, pedal.id, refreshParticipants]
+  );
+
   const onLeftPedal = useCallback(async () => {
     setParticipantsFetched(false);
     if (user?.id) {
@@ -216,10 +247,14 @@ export function PedalDetails({ initialPedal }: PedalDetailsProps) {
             loading={participantsLoading}
             approved={approved}
             isOwner={isOwner}
+            pedalStatus={pedal.status}
+            creatorId={pedal.creator_id}
             pending={pending}
             pendingBusyId={pendingBusyId}
+            removeApprovedBusyId={removeApprovedBusyId}
             onApprove={onApprove}
             onReject={onReject}
+            onRemoveApproved={onRemoveApproved}
           />
         )}
         {activeTab === "chat" && (

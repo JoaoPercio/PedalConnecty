@@ -1,0 +1,279 @@
+"use client";
+
+import { useState, useCallback, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
+import type {
+  StepPersonalInfo as Step1Data,
+  StepSkillLevel as Step2Data,
+} from "@/types/registration";
+import { useAuth } from "@/contexts/AuthContext";
+import { getProfile } from "@/lib/profile";
+import { isProfileRegistrationComplete } from "@/lib/profile-registration";
+import { validateStep1PersonalInfo } from "@/lib/registration-validation";
+import { completeOAuthRegistration } from "@/lib/oauth-registration";
+import { StepIndicator } from "../components/StepIndicator";
+import { StepPersonalInfo } from "../components/StepPersonalInfo";
+import { StepSkillLevel } from "../components/StepSkillLevel";
+import { AvatarUpload } from "../components/AvatarUpload";
+
+function validateStep2(_data: Step2Data): Record<string, never> {
+  return {};
+}
+
+export default function RegisterCompletePage() {
+  const router = useRouter();
+  const {
+    user,
+    loading: authLoading,
+    refreshProfileCache,
+    signOut,
+  } = useAuth();
+  const [step, setStep] = useState(1);
+  const [step1, setStep1] = useState<Step1Data>({
+    first_name: "",
+    last_name: "",
+    birth_date: "",
+    city: "",
+    gender: "masculino",
+  });
+  const [step2, setStep2] = useState<Step2Data>({
+    skill_level: "iniciante",
+  });
+  const [step1Errors, setStep1Errors] = useState<
+    Partial<Record<keyof Step1Data, string>>
+  >({});
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
+  const [existingAvatarUrl, setExistingAvatarUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [hydrated, setHydrated] = useState(false);
+  const submitLock = useRef(false);
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+      router.replace("/login");
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      const p = await getProfile(user.id);
+      if (cancelled) return;
+      if (p && isProfileRegistrationComplete(p)) {
+        router.replace("/home");
+        return;
+      }
+      setStep1((prev) => ({
+        ...prev,
+        first_name: p?.first_name?.trim() || prev.first_name,
+        last_name: p?.last_name?.trim() || prev.last_name,
+        city: p?.city?.trim() || prev.city,
+        gender:
+          (p?.gender as Step1Data["gender"]) && ["masculino", "feminino", "outro"].includes(p!.gender!)
+            ? (p!.gender as Step1Data["gender"])
+            : prev.gender,
+        birth_date: p?.birth_date || prev.birth_date,
+      }));
+      if (p?.skill_level && ["iniciante", "intermediario", "experiente", "profissional"].includes(p.skill_level)) {
+        setStep2({ skill_level: p.skill_level as Step2Data["skill_level"] });
+      }
+      const url = p?.avatar_url ?? null;
+      setExistingAvatarUrl(url);
+      setHydrated(true);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user, authLoading, router]);
+
+  useEffect(() => {
+    if (!avatarFile) {
+      setFilePreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(avatarFile);
+    setFilePreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [avatarFile]);
+
+  const avatarDisplayUrl = avatarFile ? filePreviewUrl : existingAvatarUrl;
+
+  function handleAvatarChange(f: File | null) {
+    setAvatarFile(f);
+    if (f === null) {
+      setExistingAvatarUrl(null);
+    }
+  }
+
+  const setStep1Data = useCallback((data: Step1Data) => {
+    setStep1(data);
+    setStep1Errors({});
+  }, []);
+
+  const canGoNext = () => {
+    if (step === 1) {
+      const errs = validateStep1PersonalInfo(step1);
+      setStep1Errors(errs);
+      return Object.keys(errs).length === 0;
+    }
+    if (step === 2) {
+      return Object.keys(validateStep2(step2)).length === 0;
+    }
+    return false;
+  };
+
+  const handleNext = () => {
+    if (step >= 3) return;
+    if (!canGoNext()) return;
+    setSubmitError(null);
+    setStep(step + 1);
+  };
+
+  const handleBack = () => {
+    if (step > 1) {
+      setStep(step - 1);
+      setSubmitError(null);
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (submitLock.current || !user) return;
+    submitLock.current = true;
+    try {
+      const errs = validateStep1PersonalInfo(step1);
+      setStep1Errors(errs);
+      if (Object.keys(errs).length > 0) {
+        setStep(1);
+        return;
+      }
+      setLoading(true);
+      setSubmitError(null);
+      const { error } = await completeOAuthRegistration(
+        user.id,
+        step1,
+        step2.skill_level,
+        avatarFile,
+        existingAvatarUrl
+      );
+      if (error) {
+        setSubmitError(error.message);
+        return;
+      }
+      await refreshProfileCache();
+      router.replace("/home");
+    } finally {
+      setLoading(false);
+      submitLock.current = false;
+    }
+  };
+
+  if (authLoading || !hydrated) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <p className="text-text-secondary">Carregando…</p>
+      </div>
+    );
+  }
+
+  if (!user) return null;
+
+  return (
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 sm:p-6">
+      <div className="w-full max-w-[480px] bg-surface rounded-2xl shadow-lg shadow-black/5 p-6 sm:p-8">
+        <div className="flex flex-col items-center gap-2 mb-2">
+          <h1 className="text-xl sm:text-2xl font-semibold text-foreground tracking-tight">
+            Completar cadastro
+          </h1>
+          <p className="text-sm text-text-secondary text-center">
+            Precisamos destes dados para usar o PedalConnect.
+          </p>
+        </div>
+
+        <StepIndicator
+          currentStep={step}
+          labels={["Dados pessoais", "Nível", "Foto"]}
+        />
+
+        <div className="flex flex-col gap-6 mt-6">
+          {step === 1 && (
+            <StepPersonalInfo
+              data={step1}
+              onChange={setStep1Data}
+              errors={step1Errors}
+            />
+          )}
+          {step === 2 && (
+            <StepSkillLevel data={step2} onChange={setStep2} />
+          )}
+          {step === 3 && (
+            <div className="flex flex-col gap-5">
+              <span className="block text-sm font-medium text-foreground mb-1">
+                Foto de perfil
+              </span>
+              <p className="text-sm text-text-secondary -mt-2 mb-2">
+                Usamos a foto da sua conta Google. Pode trocar abaixo, se quiser.
+              </p>
+              <AvatarUpload
+                previewUrl={avatarDisplayUrl}
+                onFileChange={handleAvatarChange}
+                disabled={loading}
+              />
+            </div>
+          )}
+
+          {submitError && (
+            <p className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-2">
+              {submitError}
+            </p>
+          )}
+
+          <div className="flex gap-3 mt-2">
+            {step > 1 ? (
+              <button
+                type="button"
+                onClick={handleBack}
+                disabled={loading}
+                className="flex-1 py-3.5 rounded-xl font-medium text-foreground bg-gray-100 hover:bg-gray-200 disabled:opacity-70 transition-colors"
+              >
+                Voltar
+              </button>
+            ) : (
+              <div className="flex-1" />
+            )}
+            {step < 3 ? (
+              <button
+                type="button"
+                onClick={handleNext}
+                className="flex-1 py-3.5 rounded-xl font-medium text-white bg-gradient-to-r from-[#1B5E20] to-[#43A047] hover:opacity-95 active:opacity-90 transition-opacity shadow-md shadow-primary/20"
+              >
+                Próximo
+              </button>
+            ) : (
+              <button
+                type="button"
+                disabled={loading}
+                onClick={() => void handleSubmit()}
+                className="flex-1 py-3.5 rounded-xl font-medium text-white bg-gradient-to-r from-[#1B5E20] to-[#43A047] hover:opacity-95 active:opacity-90 disabled:opacity-70 transition-opacity shadow-md shadow-primary/20"
+              >
+                {loading ? "Salvando…" : "Concluir"}
+              </button>
+            )}
+          </div>
+        </div>
+
+        <p className="mt-6 text-center text-sm text-text-secondary">
+          <button
+            type="button"
+            onClick={() => void signOut()}
+            className="font-medium text-primary hover:text-secondary transition-colors"
+          >
+            Sair da conta
+          </button>
+        </p>
+      </div>
+    </div>
+  );
+}

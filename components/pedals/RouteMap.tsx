@@ -32,6 +32,8 @@ interface RouteMapProps {
   staticDisplay?: boolean;
   center?: [number, number];
   containerClassName?: string;
+  /** Só em `readOnly`: título e popup do pin do primeiro ponto (default: ponto de encontro / início da rota). */
+  startMarkerLabel?: string;
 }
 
 const START_PIN_COLOR = "#1565C0";
@@ -74,21 +76,23 @@ function createStopIcon(L: typeof import("leaflet")): L.DivIcon {
 function addStartEndMarkers(
   map: L.Map,
   L: typeof import("leaflet"),
-  coordinates: [number, number][]
+  coordinates: [number, number][],
+  startLabel: string
 ): L.LayerGroup {
   const group = L.layerGroup();
   if (coordinates.length < 2) return group;
   const startIcon = createPinIcon(L, START_PIN_COLOR);
   const endIcon = createPinIcon(L, END_PIN_COLOR);
+  const startEscaped = startLabel.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
   const start = L.marker([coordinates[0][0], coordinates[0][1]], {
     icon: startIcon,
-    title: "Início",
+    title: startLabel,
   });
   const end = L.marker(
     [coordinates[coordinates.length - 1][0], coordinates[coordinates.length - 1][1]],
     { icon: endIcon, title: "Chegada" }
   );
-  start.bindPopup("<strong>Início</strong>");
+  start.bindPopup(`<strong>${startEscaped}</strong>`);
   end.bindPopup("<strong>Chegada</strong>");
   start.addTo(group);
   end.addTo(group);
@@ -123,6 +127,8 @@ function fillWaypointLayer(
   }
 }
 
+const DEFAULT_READ_ONLY_START_LABEL = "Ponto de encontro / início da rota";
+
 export function RouteMap({
   value,
   onChange,
@@ -131,6 +137,7 @@ export function RouteMap({
   staticDisplay = false,
   center,
   containerClassName = "",
+  startMarkerLabel,
 }: RouteMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -143,6 +150,8 @@ export function RouteMap({
   const waypointsLayerRef = useRef<L.LayerGroup | null>(null);
   const refreshWaypointsRef = useRef<() => void>(() => {});
   const refreshStartEndRef = useRef<(coords: [number, number][]) => void>(() => {});
+  const startMarkerLabelRef = useRef<string | undefined>(undefined);
+  startMarkerLabelRef.current = startMarkerLabel;
 
   const [placementMode, setPlacementMode] = useState(false);
   const listId = useId();
@@ -236,7 +245,10 @@ export function RouteMap({
         startEndLayerRef.current = null;
       }
       if (coords.length >= 2) {
-        startEndLayerRef.current = addStartEndMarkers(map, L, coords);
+        const startLabel = readOnlyRef.current
+          ? startMarkerLabelRef.current ?? DEFAULT_READ_ONLY_START_LABEL
+          : "Início";
+        startEndLayerRef.current = addStartEndMarkers(map, L, coords, startLabel);
       }
     };
     refreshStartEndRef.current = syncStartEnd;
@@ -436,6 +448,11 @@ export function RouteMap({
   }, [mapCenter[0], mapCenter[1], staticDisplay]);
 
   useEffect(() => {
+    if (!readOnly) return;
+    refreshStartEndRef.current(value.coordinates);
+  }, [readOnly, value.coordinates, startMarkerLabel]);
+
+  useEffect(() => {
     if (mapRef.current && center) {
       mapRef.current.setView(center, mapRef.current.getZoom());
     }
@@ -480,6 +497,9 @@ export function RouteMap({
   };
 
   const safeHeight = height || "400px";
+  const readOnlyStartLegend =
+    startMarkerLabel ?? DEFAULT_READ_ONLY_START_LABEL;
+
   return (
     <div className="space-y-3">
       <style>{`
@@ -489,7 +509,8 @@ export function RouteMap({
       {readOnly && value.coordinates.length >= 2 ? (
         <p className="text-xs text-text-secondary">
           <span className="inline-flex items-center gap-1">
-            <span className="inline-block h-2 w-2 rounded-full" style={{ background: START_PIN_COLOR }} /> Início
+            <span className="inline-block h-2 w-2 shrink-0 rounded-full" style={{ background: START_PIN_COLOR }} />
+            <span className="min-w-0">{readOnlyStartLegend}</span>
           </span>
           {" · "}
           <span className="inline-flex items-center gap-1">

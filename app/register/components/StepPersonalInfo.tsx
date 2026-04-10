@@ -11,6 +11,16 @@ const GENDERS: { value: Gender; label: string }[] = [
   { value: "outro", label: "Outro" },
 ];
 
+/** Última data de nascimento permitida para ter 18 anos completos hoje (YYYY-MM-DD). */
+function maxBirthDateForMinAge18(): string {
+  const d = new Date();
+  d.setFullYear(d.getFullYear() - 18);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 interface StepPersonalInfoProps {
   data: Data;
   onChange: (data: Data) => void;
@@ -68,6 +78,7 @@ export function StepPersonalInfo({
         <input
           id="birth_date"
           type="date"
+          max={maxBirthDateForMinAge18()}
           value={data.birth_date}
           onChange={(e) => onChange({ ...data, birth_date: e.target.value })}
           className={inputClass}

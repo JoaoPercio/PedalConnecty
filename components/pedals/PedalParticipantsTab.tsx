@@ -20,10 +20,14 @@ interface PedalParticipantsTabProps {
   loading: boolean;
   approved: ApprovedParticipant[];
   isOwner: boolean;
+  pedalStatus: string;
+  creatorId: string | null;
   pending: PendingParticipantRow[];
   pendingBusyId: string | null;
+  removeApprovedBusyId: string | null;
   onApprove: (id: string) => void;
   onReject: (id: string) => void;
+  onRemoveApproved: (id: string, displayName: string) => void;
 }
 
 export function PedalParticipantsTab({
@@ -31,11 +35,17 @@ export function PedalParticipantsTab({
   loading,
   approved,
   isOwner,
+  pedalStatus,
+  creatorId,
   pending,
   pendingBusyId,
+  removeApprovedBusyId,
   onApprove,
   onReject,
+  onRemoveApproved,
 }: PedalParticipantsTabProps) {
+  const canRemoveApproved =
+    isOwner && pedalStatus === "scheduled" && creatorId != null;
   if (!canView) {
     return (
       <div className="rounded-xl border border-dashed border-gray-200 bg-background/60 px-4 py-10 text-center">
@@ -85,6 +95,9 @@ export function PedalParticipantsTab({
                 ? row.profiles[0]
                 : row.profiles;
               const name = displayNameFromParticipant(row);
+              const isOrganizerRow = creatorId != null && row.user_id === creatorId;
+              const showRemove = canRemoveApproved && !isOrganizerRow;
+              const removing = removeApprovedBusyId === row.id;
 
               return (
                 <li
@@ -109,6 +122,16 @@ export function PedalParticipantsTab({
                       {prof?.city ? ` · ${prof.city}` : ""}
                     </p>
                   </div>
+                  {showRemove && (
+                    <button
+                      type="button"
+                      disabled={removing}
+                      onClick={() => onRemoveApproved(row.id, name)}
+                      className="shrink-0 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-800 transition enabled:hover:bg-red-100 disabled:opacity-50"
+                    >
+                      {removing ? "…" : "Remover"}
+                    </button>
+                  )}
                 </li>
               );
             })}

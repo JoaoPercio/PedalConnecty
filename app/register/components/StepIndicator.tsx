@@ -1,15 +1,18 @@
 "use client";
 
-const STEPS = ["Dados pessoais", "Nível", "Conta"];
+const DEFAULT_STEPS = ["Dados pessoais", "Nível", "Conta"];
 
 interface StepIndicatorProps {
   currentStep: number;
+  /** Se omitido, usa o fluxo padrão de registo (inclui passo Conta). */
+  labels?: string[];
 }
 
-export function StepIndicator({ currentStep }: StepIndicatorProps) {
+export function StepIndicator({ currentStep, labels }: StepIndicatorProps) {
+  const steps = labels ?? DEFAULT_STEPS;
   return (
     <div className="flex items-center justify-center gap-2 sm:gap-4 mb-8">
-      {STEPS.map((label, index) => {
+      {steps.map((label, index) => {
         const step = index + 1;
         const isActive = currentStep === step;
         const isPast = currentStep > step;
@@ -34,7 +37,7 @@ export function StepIndicator({ currentStep }: StepIndicatorProps) {
             >
               {label}
             </span>
-            {index < STEPS.length - 1 && (
+            {index < steps.length - 1 && (
               <div
                 className={`
                   w-6 sm:w-10 h-0.5 mx-1 sm:mx-2 rounded

@@ -53,6 +53,7 @@ export async function registerWithProfile(
     gender,
     skill_level,
     avatar_url: avatarUrl,
+    registration_completed_at: new Date().toISOString(),
   };
 
   const { error: profileError } = await supabase.from("profiles").insert(profile);

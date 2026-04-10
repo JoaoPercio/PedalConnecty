@@ -33,6 +33,9 @@ export interface PedalDetailRecord {
   required_equipment: string[];
   age_group: PedalAgeGroup | null;
   visibility: PedalVisibility | string;
+  start_location: string | null;
+  start_lat: number | null;
+  start_lng: number | null;
   route_geojson: RouteGeoJSON | null;
   route_waypoints?: unknown;
 }

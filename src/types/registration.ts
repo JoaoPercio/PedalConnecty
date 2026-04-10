@@ -36,4 +36,6 @@ export interface ProfileInsert {
   gender: Gender;
   skill_level: SkillLevel;
   avatar_url: string | null;
+  /** Definido no registo por email e após completar cadastro OAuth. */
+  registration_completed_at?: string;
 }

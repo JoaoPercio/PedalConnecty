@@ -89,6 +89,7 @@ export interface PedalEditInitial {
   name: string;
   description: string | null;
   date: string;
+  start_location: string | null;
   start_lat: number | null;
   start_lng: number | null;
   end_lat: number | null;
@@ -132,6 +133,7 @@ export function EditPedalForm({ initial }: EditPedalFormProps) {
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverPreviewUrl, setCoverPreviewUrl] = useState<string | null>(null);
 
+  const [meetingPoint, setMeetingPoint] = useState(initial.start_location ?? "");
   const [routeValue, setRouteValue] = useState<RouteMapValue>(() =>
     geojsonToRouteValue(initial.route_geojson, initial.route_waypoints)
   );
@@ -322,7 +324,7 @@ export function EditPedalForm({ initial }: EditPedalFormProps) {
       name: name.trim(),
       description: description.trim() || null,
       date: new Date(date).toISOString(),
-      start_location: null,
+      start_location: meetingPoint.trim() || null,
       start_lat: startLat,
       start_lng: startLng,
       end_location: null,
@@ -528,6 +530,23 @@ export function EditPedalForm({ initial }: EditPedalFormProps) {
               Ganho de elevação: {elevationGain} m
             </p>
           )}
+          <div>
+            <label htmlFor="edit-meetingPoint" className={labelClass}>
+              Ponto de encontro
+            </label>
+            <textarea
+              id="edit-meetingPoint"
+              value={meetingPoint}
+              onChange={(e) => setMeetingPoint(e.target.value)}
+              rows={3}
+              className={inputClass}
+              placeholder="Ex.: estacionamento do parque, portão norte, em frente ao café…"
+            />
+            <p className="mt-1.5 text-xs text-text-secondary">
+              Opcional, mas ajuda os participantes a saber onde se juntar. O mapa usa o
+              primeiro ponto da rota como referência no GPS.
+            </p>
+          </div>
         </div>
       )}
 
@@ -679,6 +698,11 @@ export function EditPedalForm({ initial }: EditPedalFormProps) {
           <p className="text-sm text-foreground">
             Máx. participantes: {maxParticipants || "Sem limite"}
           </p>
+          {meetingPoint.trim() ? (
+            <p className="text-sm text-foreground">
+              Ponto de encontro: {meetingPoint.trim()}
+            </p>
+          ) : null}
           {routeValue.geojson && (
             <div className="h-32 overflow-hidden rounded-lg border border-gray-200">
               <RouteMap
