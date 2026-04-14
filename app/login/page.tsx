@@ -7,38 +7,7 @@ import { signIn } from "@/lib/auth";
 import { getProfile, setCachedProfile } from "@/lib/profile";
 import { isProfileRegistrationComplete } from "@/lib/profile-registration";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
-
-function AppIcon() {
-  return (
-    <svg
-      width="64"
-      height="64"
-      viewBox="0 0 64 64"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className="w-14 h-14 sm:w-16 sm:h-16"
-      aria-hidden
-    >
-      <circle cx="32" cy="32" r="30" fill="url(#iconGrad)" />
-      <path
-        d="M22 40c0-5 4-8 10-8s10 3 10 8M32 32v-6M28 26l4-4 4 4M32 38c-2 0-4 1.5-4 4h8c0-2.5-2-4-4-4z"
-        stroke="white"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
-      <circle cx="24" cy="44" r="4" fill="white" />
-      <circle cx="40" cy="44" r="4" fill="white" />
-      <defs>
-        <linearGradient id="iconGrad" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#1B5E20" />
-          <stop offset="1" stopColor="#43A047" />
-        </linearGradient>
-      </defs>
-    </svg>
-  );
-}
+import { AppLogo } from "@/components/AppLogo";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -82,7 +51,7 @@ export default function LoginPage() {
       <div className="w-full max-w-[400px] bg-surface rounded-2xl shadow-lg shadow-black/5 p-6 sm:p-8">
         {/* Ícone e título */}
         <div className="flex flex-col items-center gap-3 mb-8">
-          <AppIcon />
+          <AppLogo priority />
           <h1 className="text-2xl sm:text-3xl font-semibold text-foreground tracking-tight">
             PedalConnect
           </h1>

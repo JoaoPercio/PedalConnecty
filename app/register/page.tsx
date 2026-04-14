@@ -18,6 +18,7 @@ import { StepIndicator } from "./components/StepIndicator";
 import { StepPersonalInfo } from "./components/StepPersonalInfo";
 import { StepSkillLevel } from "./components/StepSkillLevel";
 import { StepAccount } from "./components/StepAccount";
+import { AppLogo } from "@/components/AppLogo";
 
 const initialFormData: RegistrationFormData = {
   step1: {
@@ -37,38 +38,6 @@ const initialFormData: RegistrationFormData = {
     avatar_file: null,
   },
 };
-
-function AppIcon() {
-  return (
-    <svg
-      width="64"
-      height="64"
-      viewBox="0 0 64 64"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className="w-12 h-12 sm:w-14 sm:h-14"
-      aria-hidden
-    >
-      <circle cx="32" cy="32" r="30" fill="url(#iconGradRegister)" />
-      <path
-        d="M22 40c0-5 4-8 10-8s10 3 10 8M32 32v-6M28 26l4-4 4 4M32 38c-2 0-4 1.5-4 4h8c0-2.5-2-4-4-4z"
-        stroke="white"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
-      <circle cx="24" cy="44" r="4" fill="white" />
-      <circle cx="40" cy="44" r="4" fill="white" />
-      <defs>
-        <linearGradient id="iconGradRegister" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#1B5E20" />
-          <stop offset="1" stopColor="#43A047" />
-        </linearGradient>
-      </defs>
-    </svg>
-  );
-}
 
 function validateStep1(data: Step1Data): Partial<Record<keyof Step1Data, string>> {
   return validateStep1PersonalInfo(data);
@@ -211,7 +180,7 @@ export default function RegisterPage() {
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 sm:p-6">
       <div className="w-full max-w-[480px] bg-surface rounded-2xl shadow-lg shadow-black/5 p-6 sm:p-8">
         <div className="flex flex-col items-center gap-2 mb-2">
-          <AppIcon />
+          <AppLogo className="h-12 w-12 sm:h-14 sm:w-14" priority />
           <h1 className="text-xl sm:text-2xl font-semibold text-foreground tracking-tight">
             PedalConnect
           </h1>
