@@ -14,7 +14,19 @@ export default function AuthCallbackPage() {
     let cancelled = false;
 
     async function run() {
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      const { error: initError } = await supabase.auth.initialize();
+      if (cancelled) return;
+
+      if (initError) {
+        setMessage("Não foi possível concluir o login.");
+        router.replace("/login?error=oauth");
+        return;
+      }
+
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
 
       if (cancelled) return;
 

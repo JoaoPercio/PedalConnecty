@@ -1,13 +1,12 @@
+function normalizeOrigin(raw: string | undefined): string {
+  return (raw ?? "").trim().replace(/\/$/, "");
+}
+
 /**
- * Origin (scheme + host, no path, no trailing slash) used in Supabase auth redirects.
- *
- * Browser: prefers `window.location.origin` so dev, production and Vercel previews follow the
- * URL aberta; falls back to `NEXT_PUBLIC_SITE_URL` only if origin is empty (ex.: ambientes exóticos).
- *
- * Server: `NEXT_PUBLIC_SITE_URL`, else `VERCEL_URL` as `https://…` on Vercel.
+ * Origin genérico (ex.: links relativos ao host atual).
  */
 export function getSiteOrigin(): string {
-  const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, "");
+  const configured = normalizeOrigin(process.env.NEXT_PUBLIC_SITE_URL);
 
   if (typeof window !== "undefined") {
     const live = window.location.origin;
@@ -17,6 +16,33 @@ export function getSiteOrigin(): string {
   }
 
   if (configured) return configured;
+
+  const vercel = process.env.VERCEL_URL?.trim();
+  if (vercel) {
+    const host = vercel.replace(/^https?:\/\//, "");
+    return `https://${host}`;
+  }
+
+  return "";
+}
+
+/**
+ * Origin usado em `redirectTo` do Supabase (OAuth, reset de senha).
+ *
+ * **Prioriza `NEXT_PUBLIC_SITE_URL`**: o Supabase só aceita URLs que estejam na lista
+ * "Redirect URLs" e alinhadas com o Site URL. Se `redirectTo` não bater com a lista,
+ * o GoTrue costuma redirecionar para o Site URL do projeto (muitas vezes localhost).
+ *
+ * Em Vercel, define `NEXT_PUBLIC_SITE_URL=https://pedal-connect.vercel.app` (sem barra final).
+ * Em local, deixa vazio ou `http://localhost:3000` no `.env.local`.
+ */
+export function getAuthRedirectOrigin(): string {
+  const configured = normalizeOrigin(process.env.NEXT_PUBLIC_SITE_URL);
+  if (configured) return configured;
+
+  if (typeof window !== "undefined") {
+    return window.location.origin;
+  }
 
   const vercel = process.env.VERCEL_URL?.trim();
   if (vercel) {

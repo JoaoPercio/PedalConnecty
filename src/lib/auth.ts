@@ -1,8 +1,8 @@
 import { supabase } from "./supabase";
-import { getSiteOrigin } from "./site-origin";
+import { getAuthRedirectOrigin } from "./site-origin";
 
 export async function signInWithGoogle() {
-  const origin = getSiteOrigin();
+  const origin = getAuthRedirectOrigin();
   return await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
@@ -35,6 +35,6 @@ export async function signOut() {
 
 export async function resetPassword(email: string) {
   return await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${getSiteOrigin()}/login`,
+    redirectTo: `${getAuthRedirectOrigin()}/login`,
   });
 }
