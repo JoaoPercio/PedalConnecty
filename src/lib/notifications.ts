@@ -7,6 +7,7 @@ export const NOTIFICATION_TYPES = [
   "new_participant",
   "pedal_reminder",
   "pedal_cancelled",
+  "pedal_started",
   "new_message",
 ] as const;
 
