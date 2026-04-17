@@ -8,10 +8,11 @@ import {
   fetchPedalMessages,
   sendPedalMessage,
 } from "@/lib/pedal-detail-client";
+import { parseDbTimestamp } from "@/lib/parse-db-timestamp";
 
 function formatTime(iso: string): string {
   try {
-    return new Date(iso).toLocaleString("pt-BR", {
+    return parseDbTimestamp(iso).toLocaleString("pt-BR", {
       day: "2-digit",
       month: "2-digit",
       hour: "2-digit",

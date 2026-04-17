@@ -9,13 +9,14 @@ import {
   insertRouteComment,
   type RouteCommentRow,
 } from "@/lib/routes";
+import { parseDbTimestamp } from "@/lib/parse-db-timestamp";
 
 interface RouteCommentsProps {
   routeId: string;
 }
 
 function formatTime(iso: string): string {
-  const d = new Date(iso);
+  const d = parseDbTimestamp(iso);
   if (Number.isNaN(d.getTime())) return "";
   return d.toLocaleString("pt-BR", {
     day: "2-digit",

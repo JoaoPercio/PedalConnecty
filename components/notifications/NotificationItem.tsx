@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import type { NotificationRow } from "@/lib/notifications";
+import { parseDbTimestamp } from "@/lib/parse-db-timestamp";
 
 function formatNotifTime(iso: string): string {
   try {
-    const d = new Date(iso);
+    const d = parseDbTimestamp(iso);
     const now = new Date();
     const sameDay =
       d.getDate() === now.getDate() &&
