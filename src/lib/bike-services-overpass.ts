@@ -111,12 +111,10 @@ export async function fetchBikeServices(
   const query = buildOverpassQuery(lat, lng);
 
   try {
-    const res = await fetch(OVERPASS_URL, {
+    const res = await fetch("/api/bike-services", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
-      },
-      body: `data=${encodeURIComponent(query)}`,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query }),
     });
 
     if (!res.ok) {
