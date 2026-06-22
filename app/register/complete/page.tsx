@@ -33,7 +33,6 @@ export default function RegisterCompletePage() {
     first_name: "",
     last_name: "",
     birth_date: "",
-    city: "",
     gender: "masculino",
   });
   const [step2, setStep2] = useState<Step2Data>({
@@ -69,7 +68,6 @@ export default function RegisterCompletePage() {
         ...prev,
         first_name: p?.first_name?.trim() || prev.first_name,
         last_name: p?.last_name?.trim() || prev.last_name,
-        city: p?.city?.trim() || prev.city,
         gender:
           (p?.gender as Step1Data["gender"]) && ["masculino", "feminino", "outro"].includes(p!.gender!)
             ? (p!.gender as Step1Data["gender"])

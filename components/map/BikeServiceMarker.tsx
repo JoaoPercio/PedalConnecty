@@ -9,23 +9,36 @@ import {
   type BikeServiceKind,
   type BikeServicePlace,
 } from "@/lib/bike-services-overpass";
+import {
+  createMapPinIcon,
+  MAP_PIN_COLORS,
+  type MapPinColors,
+} from "@/components/map/MapPinIcon";
+
+const KIND_PIN_CONFIG: Record<
+  BikeServiceKind,
+  { emoji: string; colors: MapPinColors }
+> = {
+  loja: { emoji: "🏪", colors: MAP_PIN_COLORS.primary },
+  oficina: { emoji: "🔧", colors: MAP_PIN_COLORS.secondary },
+  aluguel: { emoji: "🚲", colors: MAP_PIN_COLORS.accent },
+  estacao: { emoji: "🛠️", colors: MAP_PIN_COLORS.neutral },
+};
 
 export function createKindIcons(): Record<BikeServiceKind, L.DivIcon> {
-  const mk = (emoji: string, bg: string) =>
-    L.divIcon({
-      className: "bike-service-marker",
-      html: `<div style="display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:9999px;background:${bg};box-shadow:0 2px 8px rgba(0,0,0,.2);font-size:16px;">${emoji}</div>`,
-      iconSize: [32, 32],
-      iconAnchor: [16, 32],
-      popupAnchor: [0, -28],
-    });
-
-  return {
-    loja: mk("🏪", "#1B5E20"),
-    oficina: mk("🔧", "#2E7D32"),
-    aluguel: mk("🚲", "#43A047"),
-    estacao: mk("🛠️", "#616161"),
-  };
+  return Object.fromEntries(
+    (Object.entries(KIND_PIN_CONFIG) as [BikeServiceKind, (typeof KIND_PIN_CONFIG)[BikeServiceKind]][]).map(
+      ([kind, { emoji, colors }]) => [
+        kind,
+        createMapPinIcon({
+          L,
+          className: "bike-service-marker",
+          colors,
+          content: { content: emoji, fontSize: 14, kind: "emoji" },
+        }),
+      ]
+    )
+  ) as Record<BikeServiceKind, L.DivIcon>;
 }
 
 function googleMapsUrl(lat: number, lng: number): string {

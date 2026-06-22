@@ -6,7 +6,6 @@ export interface StepPersonalInfo {
   first_name: string;
   last_name: string;
   birth_date: string;
-  city: string;
   gender: Gender;
 }
 
@@ -32,7 +31,7 @@ export interface ProfileInsert {
   first_name: string;
   last_name: string;
   birth_date: string;
-  city: string;
+  city: string | null;
   gender: Gender;
   skill_level: SkillLevel;
   avatar_url: string | null;

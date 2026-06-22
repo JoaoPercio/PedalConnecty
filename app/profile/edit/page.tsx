@@ -36,7 +36,6 @@ export default function ProfileEditPage() {
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [city, setCity] = useState("");
   const [gender, setGender] = useState<Gender>("outro");
   const [skillLevel, setSkillLevel] = useState<SkillLevel>("iniciante");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -56,7 +55,6 @@ export default function ProfileEditPage() {
       const profile = await getProfile(user.id);
       if (profile) {
         setName([profile.first_name, profile.last_name].filter(Boolean).join(" "));
-        setCity(profile.city ?? "");
         setGender((profile.gender as Gender) ?? "outro");
         setSkillLevel((profile.skill_level as SkillLevel) ?? "iniciante");
         setCurrentAvatarUrl(profile.avatar_url);
@@ -113,7 +111,6 @@ export default function ProfileEditPage() {
 
       const { error: updateErr } = await updateProfile(user.id, {
         avatar_url: avatarUrl,
-        city: city || null,
         gender,
         skill_level: skillLevel,
       });
@@ -224,20 +221,6 @@ export default function ProfileEditPage() {
               previewUrl={previewUrl}
               onFileChange={setAvatarFile}
               disabled={saving}
-            />
-          </div>
-
-          <div>
-            <label htmlFor="city" className={labelClass}>
-              Cidade
-            </label>
-            <input
-              id="city"
-              type="text"
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-              className={inputClass}
-              placeholder="Ex: São Paulo"
             />
           </div>
 

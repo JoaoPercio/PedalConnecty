@@ -66,6 +66,23 @@ export function mapAlertTypeMeta(type: MapAlertType): { label: string; emoji: st
   return found ?? { label: type, emoji: "📍" };
 }
 
+export function mapAlertPinColors(type: MapAlertType): { fill: string; inner: string } {
+  switch (type) {
+    case "danger":
+      return { fill: "#C62828", inner: "#E53935" };
+    case "obstacle":
+      return { fill: "#EF6C00", inner: "#FB8C00" };
+    case "good_route":
+      return { fill: "#1B5E20", inner: "#43A047" };
+    case "climb":
+      return { fill: "#6A1B9A", inner: "#8E24AA" };
+    case "repair":
+      return { fill: "#2E7D32", inner: "#66BB6A" };
+    case "water":
+      return { fill: "#0277BD", inner: "#039BE5" };
+  }
+}
+
 export function formatTimeRemaining(expiresAtIso: string): string {
   const end = new Date(expiresAtIso).getTime();
   const now = Date.now();

@@ -17,6 +17,7 @@ import {
   buildBikeServicePopupHtml,
   createKindIcons,
 } from "@/components/map/BikeServiceMarker";
+import { MAP_PIN_STYLES } from "@/components/map/MapPinIcon";
 
 const ZOOM = 12;
 
@@ -238,10 +239,7 @@ export function BikeServicesMap() {
       </div>
 
       <style>{`
-        .bike-service-marker.leaflet-div-icon {
-          background: transparent !important;
-          border: none !important;
-        }
+        ${MAP_PIN_STYLES}
       `}</style>
     </div>
   );

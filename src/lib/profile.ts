@@ -104,6 +104,18 @@ export async function updateProfile(
 
 const AVATARS_BUCKET = "avatars";
 
+/** Same storage path on every upload — append a version param so browsers fetch the new file. */
+export function versionedAvatarUrl(publicUrl: string): string {
+  try {
+    const u = new URL(publicUrl);
+    u.searchParams.set("v", String(Date.now()));
+    return u.toString();
+  } catch {
+    const join = publicUrl.includes("?") ? "&" : "?";
+    return `${publicUrl}${join}v=${Date.now()}`;
+  }
+}
+
 export async function uploadAvatar(
   userId: string,
   file: File
@@ -116,5 +128,5 @@ export async function uploadAvatar(
   if (uploadError) return { avatarUrl: null, error: uploadError };
 
   const { data } = supabase.storage.from(AVATARS_BUCKET).getPublicUrl(filePath);
-  return { avatarUrl: data.publicUrl, error: null };
+  return { avatarUrl: versionedAvatarUrl(data.publicUrl), error: null };
 }

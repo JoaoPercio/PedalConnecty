@@ -90,24 +90,6 @@ export function StepPersonalInfo({
       </div>
 
       <div>
-        <label htmlFor="city" className="block text-sm font-medium text-foreground mb-1.5">
-          Cidade
-        </label>
-        <input
-          id="city"
-          type="text"
-          placeholder="Cidade"
-          value={data.city}
-          onChange={(e) => onChange({ ...data, city: e.target.value })}
-          className={inputClass}
-          autoComplete="address-level2"
-        />
-        {errors.city && (
-          <p className="mt-1 text-sm text-red-600">{errors.city}</p>
-        )}
-      </div>
-
-      <div>
         <span className="block text-sm font-medium text-foreground mb-2">
           Gênero
         </span>

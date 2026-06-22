@@ -25,7 +25,6 @@ const initialFormData: RegistrationFormData = {
     first_name: "",
     last_name: "",
     birth_date: "",
-    city: "",
     gender: "masculino",
   },
   step2: {

@@ -36,6 +36,5 @@ export function validateStep1PersonalInfo(
     errors.birth_date =
       "É necessário ter pelo menos 18 anos para se cadastrar.";
   }
-  if (!data.city?.trim()) errors.city = "Cidade é obrigatória.";
   return errors;
 }

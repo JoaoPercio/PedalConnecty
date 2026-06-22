@@ -25,7 +25,7 @@ export async function completeOAuthRegistration(
     first_name: step1.first_name.trim(),
     last_name: step1.last_name.trim(),
     birth_date: step1.birth_date,
-    city: step1.city.trim(),
+    city: null,
     gender: step1.gender,
     skill_level,
     avatar_url: avatarUrl,

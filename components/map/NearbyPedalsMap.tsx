@@ -5,14 +5,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { LayerGroup, Map as LeafletMap } from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { supabase } from "@/lib/supabase";
-import type { PedalDifficulty, PedalTerrain } from "@/lib/pedals";
-import type { PedalVisibility } from "@/lib/pedals";
-import type { PedalAgeGroup } from "@/lib/pedals";
 import {
   requestUserPosition,
   LOCATION_PERMISSION_MESSAGE,
 } from "@/lib/geolocation";
+import { loadNearbyPedalsForView } from "@/lib/nearby-pedals";
 import type { NearbyPedal } from "./PedalMarker";
 import { FilterModal } from "@/components/filters/FilterModal";
 import { PedalFilters } from "@/components/filters/PedalFilters";
@@ -24,84 +21,18 @@ import {
   type EnrichedNearbyPedal,
   type PedalFiltersState,
 } from "@/lib/pedal-filters";
-
-interface PedalRow {
-  id: string;
-  name: string;
-  description: string | null;
-  date: string;
-  start_lat: number | null;
-  start_lng: number | null;
-  distance_km: number | null;
-  elevation_gain: number | null;
-  difficulty: PedalDifficulty | null;
-  terrain: PedalTerrain | null;
-  max_participants: number | null;
-  age_group: PedalAgeGroup | null;
-  visibility: PedalVisibility;
-  status: string;
-}
-
-/** Limite de linhas no Supabase (evita carregar tudo). */
-const FETCH_LIMIT = 800;
-
-function calculateDistanceKm(
-  lat1: number,
-  lng1: number,
-  lat2: number,
-  lng2: number
-): number {
-  const R = 6371;
-  const toRad = (v: number) => (v * Math.PI) / 180;
-  const dLat = toRad(lat2 - lat1);
-  const dLng = toRad(lng2 - lng1);
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(toRad(lat1)) *
-      Math.cos(toRad(lat2)) *
-      Math.sin(dLng / 2) *
-      Math.sin(dLng / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return Math.round(R * c * 10) / 10;
-}
-
-async function fetchApprovedCounts(
-  pedalIds: string[]
-): Promise<Map<string, number>> {
-  const map = new Map<string, number>();
-  if (pedalIds.length === 0) return map;
-  const { data, error } = await supabase
-    .from("pedal_participants")
-    .select("pedal_id")
-    .in("pedal_id", pedalIds)
-    .eq("status", "approved");
-  if (error || !data) return map;
-  for (const row of data as { pedal_id: string }[]) {
-    map.set(row.pedal_id, (map.get(row.pedal_id) ?? 0) + 1);
-  }
-  return map;
-}
+import {
+  createMapPinIcon,
+  MAP_PIN_COLORS,
+  MAP_PIN_STYLES,
+} from "@/components/map/MapPinIcon";
 
 function createPedalPinIcon(L: typeof import("leaflet")): L.DivIcon {
-  const html = `
-    <div class="pedal-pin-wrap">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 56" width="44" height="56" aria-hidden="true">
-        <path fill="#1B5E20" stroke="#ffffff" stroke-width="1.5"
-          d="M22 3C12.8 3 5 10.5 5 19.2c0 7.8 6.5 16.5 17 33.8 10.5-17.3 17-26 17-33.8C39 10.5 31.2 3 22 3z"
-          style="filter:drop-shadow(0 2px 4px rgba(27,94,32,0.35))"/>
-        <path fill="#43A047" opacity="0.9"
-          d="M22 6c-7.2 0-13 5.6-13 12.5 0 4.2 2.8 9.2 8.5 18.5 5.7-9.3 8.5-14.3 8.5-18.5C35 11.6 29.2 6 22 6z"/>
-        <circle cx="22" cy="18.5" r="10" fill="#ffffff"/>
-        <text x="22" y="23" text-anchor="middle" fill="#1B5E20" font-size="15" font-weight="700" font-family="system-ui,sans-serif">P</text>
-      </svg>
-    </div>`;
-
-  return L.divIcon({
+  return createMapPinIcon({
+    L,
     className: "pedal-nearby-marker",
-    html,
-    iconSize: [44, 56],
-    iconAnchor: [22, 56],
-    popupAnchor: [0, -52],
+    colors: MAP_PIN_COLORS.primary,
+    content: { content: "P", textColor: "#1B5E20", fontSize: 15 },
   });
 }
 
@@ -143,8 +74,10 @@ const NearbyMapInner = () => {
   const [filterModalOpen, setFilterModalOpen] = useState(false);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const headerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<LeafletMap | null>(null);
   const markersLayerRef = useRef<LayerGroup | null>(null);
+  const [headerOffset, setHeaderOffset] = useState(88);
 
   useEffect(() => {
     let isMounted = true;
@@ -173,61 +106,21 @@ const NearbyMapInner = () => {
     const fetchPedals = async () => {
       setLoadingPedals(true);
       setError(null);
-      const { data, error: supaError } = await supabase
-        .from("pedals")
-        .select(
-          "id,name,description,date,start_lat,start_lng,distance_km,elevation_gain,difficulty,terrain,status,visibility,max_participants,age_group"
-        )
-        .or("status.eq.scheduled,status.eq.in_progress")
-        .in("visibility", ["public", "female_only"])
-        .not("start_lat", "is", null)
-        .not("start_lng", "is", null)
-        .order("date", { ascending: true })
-        .limit(FETCH_LIMIT);
+      const [userLat, userLng] = userLocation;
+      const { data, error: fetchError } = await loadNearbyPedalsForView(
+        userLat,
+        userLng
+      );
 
       if (!isMounted) return;
 
-      if (supaError) {
+      if (fetchError) {
         setError("Erro ao carregar pedais próximos.");
         setLoadingPedals(false);
         return;
       }
 
-      const rows = (data as PedalRow[] | null) ?? [];
-      const [userLat, userLng] = userLocation;
-      const ids = rows.map((r) => r.id);
-      const counts = await fetchApprovedCounts(ids);
-
-      const enriched: EnrichedNearbyPedal[] = rows
-        .filter(
-          (p): p is PedalRow & { start_lat: number; start_lng: number } =>
-            p.start_lat !== null && p.start_lng !== null
-        )
-        .map((p) => {
-          const computedDistanceKm = calculateDistanceKm(
-            userLat,
-            userLng,
-            p.start_lat,
-            p.start_lng
-          );
-          return {
-            id: p.id,
-            name: p.name,
-            date: p.date,
-            distance_km: p.distance_km,
-            difficulty: p.difficulty,
-            terrain: p.terrain,
-            age_group: p.age_group,
-            visibility: p.visibility,
-            max_participants: p.max_participants,
-            start_lat: p.start_lat,
-            start_lng: p.start_lng,
-            computedDistanceKm,
-            approved_count: counts.get(p.id) ?? 0,
-          };
-        });
-
-      setCatalog(enriched);
+      setCatalog(data);
       setLoadingPedals(false);
     };
 
@@ -264,6 +157,16 @@ const NearbyMapInner = () => {
     }
     return null;
   }, [userLocation, hasAny, pedalsForMap]);
+
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const update = () => setHeaderOffset(el.getBoundingClientRect().height);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [center, filtered.length, activeLabels.length, loadingPedals]);
 
   useEffect(() => {
     if (!center) return;
@@ -405,7 +308,10 @@ const NearbyMapInner = () => {
       </aside>
 
       <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
-        <div className="pointer-events-none absolute left-0 right-0 top-0 z-[500] flex flex-col gap-2 px-4 py-3 pr-14 sm:pr-16 lg:pr-4">
+        <div
+          ref={headerRef}
+          className="pointer-events-none absolute left-0 right-0 top-0 z-[500] flex flex-col gap-2 px-4 py-3"
+        >
           <div className="pointer-events-auto rounded-xl border border-gray-200/80 bg-surface/95 px-4 py-3 shadow-md backdrop-blur-sm ring-1 ring-primary/10 transition-shadow duration-200">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0 flex-1">
@@ -455,17 +361,9 @@ const NearbyMapInner = () => {
         <div ref={containerRef} className="min-h-0 w-full flex-1" />
 
         <style>{`
-        .pedal-nearby-marker.leaflet-div-icon {
-          background: transparent !important;
-          border: none !important;
-        }
-        .pedal-pin-wrap {
-          display: flex;
-          align-items: flex-end;
-          justify-content: center;
-        }
+        ${MAP_PIN_STYLES}
         .leaflet-container .leaflet-top.leaflet-right {
-          margin-top: 12px;
+          margin-top: ${headerOffset + 8}px;
           margin-right: 12px;
         }
         .leaflet-container .leaflet-control-zoom a {

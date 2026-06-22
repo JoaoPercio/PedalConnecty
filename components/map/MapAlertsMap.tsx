@@ -14,6 +14,7 @@ import {
   formatTimeRemaining,
   insertMapAlert,
   loadMapAlertsForView,
+  mapAlertPinColors,
   mapAlertTypeMeta,
   MAP_ALERT_CREATE_COOLDOWN_MS,
   MAP_ALERT_TYPE_OPTIONS,
@@ -22,6 +23,7 @@ import {
 } from "@/lib/map-alerts";
 import { MapAlertsCreateModal } from "@/components/map/MapAlertsCreateModal";
 import { AvatarImg } from "@/components/AvatarImg";
+import { createMapPinIcon, MAP_PIN_STYLES } from "@/components/map/MapPinIcon";
 
 const ZOOM = 14;
 
@@ -35,13 +37,13 @@ function profileDisplayName(p: MapAlertWithProfile["profile"]): string {
   return n || "Ciclista";
 }
 
-function createAlertDivIcon(emoji: string): L.DivIcon {
-  return L.divIcon({
+function createAlertDivIcon(L: typeof import("leaflet"), type: MapAlertType): L.DivIcon {
+  const { emoji } = mapAlertTypeMeta(type);
+  return createMapPinIcon({
+    L,
     className: "map-alert-marker",
-    html: `<div class="map-alert-marker-inner" aria-hidden="true">${emoji}</div>`,
-    iconSize: [40, 40],
-    iconAnchor: [20, 40],
-    popupAnchor: [0, -36],
+    colors: mapAlertPinColors(type),
+    content: { content: emoji, fontSize: 14, kind: "emoji" },
   });
 }
 
@@ -225,9 +227,8 @@ export function MapAlertsMap() {
     }).addTo(layer);
 
     filteredAlerts.forEach((a) => {
-      const { emoji } = mapAlertTypeMeta(a.type);
       const marker = L.marker(alertLatLng(a), {
-        icon: createAlertDivIcon(emoji),
+        icon: createAlertDivIcon(L, a.type),
       });
       marker.addTo(layer);
       marker.on("click", (ev: L.LeafletMouseEvent) => {
@@ -389,7 +390,7 @@ export function MapAlertsMap() {
         <button
           type="button"
           onClick={openCreateModal}
-          className="absolute bottom-4 right-4 z-[600] flex h-14 w-14 items-center justify-center rounded-full bg-primary text-2xl font-light text-white shadow-lg ring-2 ring-white/90 transition hover:opacity-95 focus:outline-none focus:ring-2 focus:ring-primary/40"
+          className="fixed bottom-20 right-4 z-[1010] flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-r from-[#1B5E20] to-[#43A047] text-2xl font-light text-white shadow-lg shadow-primary/30 transition-opacity hover:opacity-95 active:opacity-90 focus:outline-none focus:ring-4 focus:ring-primary/30"
           aria-label="Criar alerta"
         >
           +
@@ -458,20 +459,7 @@ export function MapAlertsMap() {
       />
 
       <style>{`
-        .map-alert-marker.leaflet-div-icon {
-          background: transparent !important;
-          border: none !important;
-        }
-        .map-alert-marker-inner {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          width: 40px;
-          height: 40px;
-          font-size: 26px;
-          line-height: 1;
-          filter: drop-shadow(0 2px 4px rgba(0,0,0,0.25));
-        }
+        ${MAP_PIN_STYLES}
         .leaflet-container .leaflet-top.leaflet-right {
           margin-top: 12px;
           margin-right: 12px;

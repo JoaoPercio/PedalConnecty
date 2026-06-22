@@ -1,6 +1,6 @@
 import { supabase } from "./supabase";
 
-const PEDAL_COVERS_BUCKET = "pedal-covers";
+const PEDAL_COVERS_BUCKET = "pedals";
 const OPEN_ELEVATION_URL = "https://api.open-elevation.com/api/v1/lookup";
 
 export type PedalDifficulty = "iniciante" | "intermediario" | "avancado";
