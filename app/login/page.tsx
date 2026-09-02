@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
 import { signIn } from "@/lib/auth";
 import { getProfile, setCachedProfile } from "@/lib/profile";
 import { isProfileRegistrationComplete } from "@/lib/profile-registration";
@@ -11,9 +12,27 @@ import { AppLogo } from "@/components/AppLogo";
 
 export default function LoginPage() {
   const router = useRouter();
+  const {
+    user,
+    loading: authLoading,
+    profileGateLoading,
+    registrationComplete,
+  } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (authLoading || profileGateLoading) return;
+    if (!user) return;
+    router.replace(registrationComplete ? "/home" : "/register/complete");
+  }, [
+    user,
+    authLoading,
+    profileGateLoading,
+    registrationComplete,
+    router,
+  ]);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();

@@ -1,5 +1,10 @@
 /** Bike-related OSM place kinds (Portuguese UI labels). */
-export type BikeServiceKind = "loja" | "aluguel" | "oficina" | "estacao";
+export type BikeServiceKind =
+  | "loja"
+  | "aluguel"
+  | "oficina"
+  | "estacao"
+  | "posto";
 
 export interface BikeServicePlace {
   id: number;
@@ -24,6 +29,8 @@ export function kindLabel(kind: BikeServiceKind): string {
       return "Oficina";
     case "estacao":
       return "Estação de reparo";
+    case "posto":
+      return "Posto de gasolina";
     default:
       return "Serviço";
   }
@@ -53,6 +60,7 @@ export function haversineKm(
 }
 
 function classify(tags: Record<string, string>): BikeServiceKind {
+  if (tags.amenity === "fuel") return "posto";
   if (tags.amenity === "bicycle_repair_station") return "estacao";
   if (tags.amenity === "bicycle_rental") return "aluguel";
   if (tags.shop === "bicycle") return "loja";
@@ -94,12 +102,18 @@ export function buildOverpassQuery(lat: number, lng: number): string {
 (
   node["shop"="bicycle"](around:30000,${lat},${lng});
   way["shop"="bicycle"](around:30000,${lat},${lng});
+
   node["amenity"="bicycle_rental"](around:10000,${lat},${lng});
   way["amenity"="bicycle_rental"](around:10000,${lat},${lng});
+
   node["service:bicycle"="yes"](around:10000,${lat},${lng});
   way["service:bicycle"="yes"](around:10000,${lat},${lng});
+
   node["amenity"="bicycle_repair_station"](around:10000,${lat},${lng});
   way["amenity"="bicycle_repair_station"](around:10000,${lat},${lng});
+
+  node["amenity"="fuel"](around:30000,${lat},${lng});
+  way["amenity"="fuel"](around:30000,${lat},${lng});
 );
 out center;`;
 }

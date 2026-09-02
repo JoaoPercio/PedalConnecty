@@ -20,6 +20,7 @@ export interface PedalInsert {
   end_lat: number | null;
   end_lng: number | null;
   distance_km: number | null;
+  average_speed_kmh: number | null;
   elevation_gain: number | null;
   difficulty: PedalDifficulty | null;
   terrain: PedalTerrain | null;
@@ -192,10 +193,6 @@ export function getMinDatetimeLocalForPedal(): string {
   return dateToDatetimeLocalValue(d);
 }
 
-/**
- * Validates `datetime-local` value for scheduling a pedal:
- * not before today (calendar), and not in the past when the day is today.
- */
 export function validatePedalDatetimeLocal(value: string): string | null {
   const trimmed = value.trim();
   if (!trimmed) return null;
@@ -212,6 +209,25 @@ export function validatePedalDatetimeLocal(value: string): string | null {
     return "Para a data de hoje, escolha um horário que ainda não passou.";
   }
   return null;
+}
+
+/** Validates average speed input (km/h) for pedal creation/editing. */
+export function validateAverageSpeedKmh(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) return "Informe a velocidade média do trajeto.";
+  const speed = Number(trimmed.replace(",", "."));
+  if (!Number.isFinite(speed) || speed <= 0) {
+    return "A velocidade média deve ser maior que zero.";
+  }
+  if (speed > 80) {
+    return "A velocidade média não pode ser maior que 80 km/h.";
+  }
+  return null;
+}
+
+/** Parse validated average speed string to number (km/h). */
+export function parseAverageSpeedKmh(value: string): number {
+  return Math.round(Number(value.trim().replace(",", ".")) * 10) / 10;
 }
 
 /** Format ISO date for datetime-local input (local timezone). */

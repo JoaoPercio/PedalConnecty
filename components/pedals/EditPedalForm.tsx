@@ -13,6 +13,8 @@ import {
   toDatetimeLocalInput,
   getMinDatetimeLocalForPedal,
   validatePedalDatetimeLocal,
+  validateAverageSpeedKmh,
+  parseAverageSpeedKmh,
   type PedalDifficulty,
   type PedalTerrain,
   type PedalAgeGroup,
@@ -95,6 +97,7 @@ export interface PedalEditInitial {
   end_lat: number | null;
   end_lng: number | null;
   distance_km: number | null;
+  average_speed_kmh: number | null;
   elevation_gain: number | null;
   difficulty: PedalDifficulty | null;
   terrain: PedalTerrain | null;
@@ -129,6 +132,9 @@ export function EditPedalForm({ initial }: EditPedalFormProps) {
   );
   const [terrain, setTerrain] = useState<PedalTerrain | "">(
     initial.terrain ?? ""
+  );
+  const [averageSpeedKmh, setAverageSpeedKmh] = useState(
+    initial.average_speed_kmh != null ? String(initial.average_speed_kmh) : ""
   );
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverPreviewUrl, setCoverPreviewUrl] = useState<string | null>(null);
@@ -214,12 +220,16 @@ export function EditPedalForm({ initial }: EditPedalFormProps) {
 
   const scheduleDateError =
     date === "" ? null : validatePedalDatetimeLocal(date);
+  const averageSpeedError =
+    averageSpeedKmh === "" ? null : validateAverageSpeedKmh(averageSpeedKmh);
   const step1Valid =
     name.trim() !== "" &&
     date !== "" &&
     scheduleDateError === null &&
     difficulty !== "" &&
-    terrain !== "";
+    terrain !== "" &&
+    averageSpeedKmh.trim() !== "" &&
+    averageSpeedError === null;
   const step2Valid =
     routeValue.geojson !== null && routeValue.coordinates.length >= 2;
 
@@ -248,6 +258,8 @@ export function EditPedalForm({ initial }: EditPedalFormProps) {
         if (dateErr) return dateErr;
         if (!difficulty) return "Selecione a dificuldade.";
         if (!terrain) return "Selecione o terreno.";
+        const speedErr = validateAverageSpeedKmh(averageSpeedKmh);
+        if (speedErr) return speedErr;
       }
       if (s === 2) {
         if (!routeValue.geojson || routeValue.coordinates.length < 2) {
@@ -256,7 +268,7 @@ export function EditPedalForm({ initial }: EditPedalFormProps) {
       }
       return null;
     },
-    [name, date, difficulty, terrain, routeValue.geojson, routeValue.coordinates.length]
+    [name, date, difficulty, terrain, averageSpeedKmh, routeValue.geojson, routeValue.coordinates.length]
   );
 
   const handleNext = async () => {
@@ -331,6 +343,7 @@ export function EditPedalForm({ initial }: EditPedalFormProps) {
       end_lat: endLat,
       end_lng: endLng,
       distance_km: distanceKm,
+      average_speed_kmh: parseAverageSpeedKmh(averageSpeedKmh),
       elevation_gain: finalElevation,
       difficulty: difficulty || null,
       terrain: terrain || null,
@@ -449,6 +462,25 @@ export function EditPedalForm({ initial }: EditPedalFormProps) {
                 </option>
               ))}
             </select>
+          </div>
+          <div>
+            <label htmlFor="edit-averageSpeed" className={labelClass}>
+              Velocidade média do trajeto (km/h) *
+            </label>
+            <input
+              id="edit-averageSpeed"
+              type="number"
+              min={1}
+              max={80}
+              step={0.1}
+              value={averageSpeedKmh}
+              onChange={(e) => setAverageSpeedKmh(e.target.value)}
+              className={inputClass}
+              placeholder="Ex: 25"
+            />
+            <p className="mt-1.5 text-xs text-text-secondary">
+              Ritmo previsto do grupo durante o pedal.
+            </p>
           </div>
           <div>
             <label className={labelClass}>Imagem de capa</label>
@@ -685,6 +717,9 @@ export function EditPedalForm({ initial }: EditPedalFormProps) {
           </p>
           <p className="text-sm text-foreground">
             Elevação: {elevationGain ?? "—"} m
+          </p>
+          <p className="text-sm text-foreground">
+            Velocidade média: {averageSpeedKmh ? `${averageSpeedKmh} km/h` : "—"}
           </p>
           <p className="text-sm text-foreground">
             Dificuldade:{" "}

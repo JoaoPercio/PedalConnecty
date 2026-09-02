@@ -1,14 +1,17 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import type { PedalMessageRow } from "@/types/pedal-details";
 import {
   displayNameFromMessage,
-  fetchPedalMessages,
   sendPedalMessage,
 } from "@/lib/pedal-detail-client";
 import { parseDbTimestamp } from "@/lib/parse-db-timestamp";
+import { usePedalMessages } from "@/hooks/usePedalMessages";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
+import { queryKeys } from "@/lib/query-keys";
 
 function formatTime(iso: string): string {
   try {
@@ -30,32 +33,23 @@ interface PedalChatTabProps {
 }
 
 export function PedalChatTab({ pedalId, userId, canUseChat }: PedalChatTabProps) {
+  const online = useOnlineStatus();
+  const queryClient = useQueryClient();
+  const { data: cachedMessages = [], isLoading } = usePedalMessages(
+    pedalId,
+    canUseChat
+  );
   const [messages, setMessages] = useState<PedalMessageRow[]>([]);
-  const [loading, setLoading] = useState(true);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!canUseChat || !pedalId) {
-      setLoading(false);
-      setMessages([]);
-      return;
-    }
+    setMessages(cachedMessages);
+  }, [cachedMessages]);
 
-    let cancelled = false;
-    setLoading(true);
-
-    (async () => {
-      const { messages: initial, error } = await fetchPedalMessages(pedalId);
-      if (cancelled) return;
-      if (error) {
-        setMessages([]);
-      } else {
-        setMessages(initial);
-      }
-      setLoading(false);
-    })();
+  useEffect(() => {
+    if (!canUseChat || !pedalId || !online) return;
 
     const channel = supabase
       .channel(`pedal-chat:${pedalId}`)
@@ -87,15 +81,23 @@ export function PedalChatTab({ pedalId, userId, canUseChat }: PedalChatTabProps)
             if (prev.some((m) => m.id === full.id)) return prev;
             return [...prev, full];
           });
+
+          queryClient.setQueryData<PedalMessageRow[]>(
+            queryKeys.pedalMessages(pedalId),
+            (old) => {
+              const list = old ?? [];
+              if (list.some((m) => m.id === full.id)) return list;
+              return [...list, full];
+            }
+          );
         }
       )
       .subscribe();
 
     return () => {
-      cancelled = true;
       supabase.removeChannel(channel);
     };
-  }, [pedalId, canUseChat]);
+  }, [pedalId, canUseChat, online, queryClient]);
 
   useEffect(() => {
     const el = listRef.current;
@@ -104,7 +106,7 @@ export function PedalChatTab({ pedalId, userId, canUseChat }: PedalChatTabProps)
   }, [messages.length]);
 
   async function handleSend() {
-    if (!userId || !canUseChat || sending) return;
+    if (!userId || !canUseChat || sending || !online) return;
     const text = input.trim();
     if (!text) return;
     setSending(true);
@@ -124,7 +126,7 @@ export function PedalChatTab({ pedalId, userId, canUseChat }: PedalChatTabProps)
     );
   }
 
-  if (loading) {
+  if (isLoading && messages.length === 0) {
     return (
       <div className="flex justify-center py-12">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
@@ -134,6 +136,11 @@ export function PedalChatTab({ pedalId, userId, canUseChat }: PedalChatTabProps)
 
   return (
     <div className="flex h-[min(70vh,520px)] flex-col rounded-xl border border-gray-100 bg-surface shadow-sm">
+      {!online ? (
+        <p className="border-b border-amber-100 bg-amber-50 px-3 py-2 text-center text-xs text-amber-800">
+          Offline — histórico em cache; envio desactivado
+        </p>
+      ) : null}
       <div
         ref={listRef}
         className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4"
@@ -186,6 +193,10 @@ export function PedalChatTab({ pedalId, userId, canUseChat }: PedalChatTabProps)
         {!userId ? (
           <p className="text-center text-xs text-text-secondary">
             Inicie sessão para enviar mensagens.
+          </p>
+        ) : !online ? (
+          <p className="text-center text-xs text-text-secondary">
+            Reconecte-se para enviar mensagens.
           </p>
         ) : (
           <div className="flex gap-2">

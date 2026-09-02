@@ -1,8 +1,12 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "sonner";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { QueryProvider } from "@/contexts/QueryProvider";
+import { SerwistRegister } from "@/components/SerwistRegister";
+import { OfflineBanner } from "@/components/OfflineBanner";
+import { PushNotificationPrompt } from "@/components/PushNotificationPrompt";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -17,6 +21,24 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "PedalConnect",
   description: "Plataforma para organizar pedais em grupo",
+  applicationName: "PedalConnect",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "PedalConnect",
+  },
+  formatDetection: {
+    telephone: false,
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#1B5E20",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -29,10 +51,15 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <AuthProvider>
-          {children}
-          <Toaster position="top-center" richColors closeButton />
-        </AuthProvider>
+        <QueryProvider>
+          <AuthProvider>
+            <SerwistRegister />
+            <OfflineBanner />
+            <PushNotificationPrompt />
+            {children}
+            <Toaster position="top-center" richColors closeButton />
+          </AuthProvider>
+        </QueryProvider>
       </body>
     </html>
   );

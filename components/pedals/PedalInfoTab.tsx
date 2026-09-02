@@ -73,6 +73,7 @@ interface PedalInfoTabProps {
   onPedalPatch: (patch: Partial<PedalDetailRecord>) => void;
   onCompletedPedal?: () => Promise<void>;
   onLeftPedal?: () => Promise<void>;
+  readOnly?: boolean;
 }
 
 export function PedalInfoTab({
@@ -87,6 +88,7 @@ export function PedalInfoTab({
   onPedalPatch,
   onCompletedPedal,
   onLeftPedal,
+  readOnly = false,
 }: PedalInfoTabProps) {
   const [starting, setStarting] = useState(false);
   const [finishing, setFinishing] = useState(false);
@@ -304,7 +306,7 @@ export function PedalInfoTab({
             </Link>
           </div>
         )}
-        {userId && canJoinFlow && participationLoaded && !participation && !isPrivate && (
+        {userId && canJoinFlow && participationLoaded && !participation && !isPrivate && !readOnly && (
           <>
             <p className="mt-2 text-sm text-text-secondary">
               Ainda não participa deste pedal.
@@ -353,7 +355,8 @@ export function PedalInfoTab({
           canJoinFlow &&
           participationLoaded &&
           participation?.status === "rejected" &&
-          !isPrivate && (
+          !isPrivate &&
+          !readOnly && (
           <>
             <p className="mt-2 text-sm text-text-secondary">
               Sua solicitação não foi aprovada. Pode solicitar novamente.
@@ -386,7 +389,8 @@ export function PedalInfoTab({
           participationLoaded &&
           participation &&
           (participation.status === "pending" ||
-            participation.status === "approved") && (
+            participation.status === "approved") &&
+          !readOnly && (
           <button
             type="button"
             disabled={leaving || joining}
@@ -419,7 +423,7 @@ export function PedalInfoTab({
             Pedal cancelado
           </p>
         )}
-        {status === "scheduled" && userId === pedal.creator_id && (
+        {status === "scheduled" && userId === pedal.creator_id && !readOnly && (
           <button
             type="button"
             disabled={starting}
@@ -429,7 +433,7 @@ export function PedalInfoTab({
             {starting ? "A iniciar…" : "Iniciar Pedal"}
           </button>
         )}
-        {status === "in_progress" && userId === pedal.creator_id && (
+        {status === "in_progress" && userId === pedal.creator_id && !readOnly && (
           <button
             type="button"
             disabled={finishing}
@@ -473,7 +477,7 @@ export function PedalInfoTab({
             </p>
           </div>
         )}
-        {status !== "cancelled" && (
+        {status !== "cancelled" && !readOnly && (
           <Link
             href={`/pedals/${pedal.id}/edit`}
             className="mt-3 flex w-full items-center justify-center rounded-xl border border-primary/30 bg-surface py-3 text-sm font-semibold text-primary shadow-sm transition hover:bg-primary/5"
@@ -481,7 +485,7 @@ export function PedalInfoTab({
             Editar pedal
           </Link>
         )}
-        {status === "scheduled" && userId === pedal.creator_id && (
+        {status === "scheduled" && userId === pedal.creator_id && !readOnly && (
           <button
             type="button"
             disabled={cancelling || starting}
@@ -518,6 +522,14 @@ export function PedalInfoTab({
           <p className="text-xs text-text-secondary">Elevação</p>
           <p className="font-semibold text-foreground">
             {pedal.elevation_gain !== null ? `${pedal.elevation_gain} m` : "—"}
+          </p>
+        </div>
+        <div>
+          <p className="text-xs text-text-secondary">Velocidade média</p>
+          <p className="font-semibold text-foreground">
+            {pedal.average_speed_kmh !== null
+              ? `${pedal.average_speed_kmh} km/h`
+              : "—"}
           </p>
         </div>
         <div>

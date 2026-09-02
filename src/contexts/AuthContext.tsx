@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -14,6 +15,7 @@ import { supabase } from "@/lib/supabase";
 import {
   setCachedProfile,
   clearCachedProfile,
+  getCachedProfile,
   getProfile,
   type CachedProfile,
 } from "@/lib/profile";
@@ -46,9 +48,10 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
+  const initialSessionHandled = useRef(false);
   const [user, setUser] = useState<User | null>(null);
   const [profileCache, setProfileCacheState] = useState<CachedProfile | null>(
-    null
+    () => (typeof window !== "undefined" ? getCachedProfile() : null)
   );
   const [loading, setLoading] = useState(true);
   const [profileGate, setProfileGate] = useState<ProfileGateState>({
@@ -92,41 +95,76 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [syncProfileGateFromRow]);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      const u = data?.session?.user ?? null;
+    let cancelled = false;
+
+    const applySignedOut = () => {
+      setUser(null);
+      setProfileCacheState(null);
+      clearCachedProfile();
+      setProfileGate({ loading: false, isComplete: true });
+    };
+
+    const applySignedIn = (u: User, loadProfile: boolean) => {
       setUser(u);
-      if (u) {
-        setProfileGate({ loading: true, isComplete: false });
-        void refreshProfileCache();
-      } else {
-        setProfileCacheState(null);
-        setProfileGate({ loading: false, isComplete: true });
-      }
-      setLoading(false);
-    });
+      if (!loadProfile) return;
+      setProfileGate({ loading: true, isComplete: false });
+      void refreshProfileCache();
+    };
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
+      if (cancelled) return;
+
       const u = session?.user ?? null;
-      setUser(u);
-      if (!u) {
-        setProfileCacheState(null);
-        clearCachedProfile();
-        setProfileGate({ loading: false, isComplete: true });
-      } else {
-        if (event === "SIGNED_IN") {
-          setProfileGate({ loading: true, isComplete: false });
-          void refreshProfileCache();
-          return;
+
+      if (event === "INITIAL_SESSION") {
+        initialSessionHandled.current = true;
+        if (u) {
+          applySignedIn(u, true);
+        } else {
+          applySignedOut();
         }
-        if (event === "USER_UPDATED") {
-          void refreshProfileCache();
-        }
+        setLoading(false);
+        return;
+      }
+
+      if (event === "SIGNED_OUT" || !u) {
+        applySignedOut();
+        return;
+      }
+
+      if (event === "SIGNED_IN") {
+        applySignedIn(u, true);
+        return;
+      }
+
+      if (event === "USER_UPDATED") {
+        setUser(u);
+        void refreshProfileCache();
+        return;
+      }
+
+      if (event === "TOKEN_REFRESHED") {
+        setUser(u);
       }
     });
 
-    return () => subscription.unsubscribe();
+    supabase.auth.getSession().then(({ data }) => {
+      if (cancelled || initialSessionHandled.current) return;
+      const u = data?.session?.user ?? null;
+      if (u) {
+        applySignedIn(u, true);
+      } else {
+        applySignedOut();
+      }
+      setLoading(false);
+    });
+
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
   }, [refreshProfileCache]);
 
   useEffect(() => {
@@ -147,7 +185,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [user, loading, profileGate, pathname, router]);
 
-  const showGateSpinner =
+  const showGateOverlay =
     !!user &&
     profileGate.loading &&
     !isExemptFromRegistrationGate(pathname, true);
@@ -173,13 +211,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider value={value}>
-      {showGateSpinner ? (
-        <div className="flex min-h-screen items-center justify-center bg-background">
+      {children}
+      {showGateOverlay ? (
+        <div
+          className="fixed inset-0 z-[9999] flex min-h-screen items-center justify-center bg-background"
+          aria-live="polite"
+          aria-busy="true"
+        >
           <p className="text-text-secondary">Carregando…</p>
         </div>
-      ) : (
-        children
-      )}
+      ) : null}
     </AuthContext.Provider>
   );
 }

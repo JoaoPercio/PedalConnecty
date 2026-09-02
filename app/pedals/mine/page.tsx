@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
@@ -8,45 +8,27 @@ import { Navbar } from "@/components/Navbar";
 import { FooterNav } from "@/components/FooterNav";
 import { FloatingCreatePedalButton } from "@/components/FloatingCreatePedalButton";
 import { PedalSummaryCard } from "@/components/pedals/PedalSummaryCard";
-import { fetchMyPedalsLists, type PedalSummary } from "@/lib/my-pedals";
+import { useMyPedals } from "@/hooks/useMyPedals";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 
 export default function MeusPedaisPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const [owned, setOwned] = useState<PedalSummary[]>([]);
-  const [participating, setParticipating] = useState<PedalSummary[]>([]);
-  const [completed, setCompleted] = useState<PedalSummary[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const online = useOnlineStatus();
+  const { data, isLoading, isError, isFetched } = useMyPedals(user?.id);
 
   useEffect(() => {
     if (authLoading) return;
     if (!user) {
       router.replace("/login");
-      return;
     }
-
-    let cancelled = false;
-    setLoading(true);
-    fetchMyPedalsLists(user.id).then(
-      ({ owned: o, participating: p, completed: c, error: err }) => {
-      if (cancelled) return;
-      setLoading(false);
-      if (err) {
-        setError("Não foi possível carregar os pedais.");
-        return;
-      }
-      setOwned(o);
-      setParticipating(p);
-      setCompleted(c);
-      setError(null);
-    }
-    );
-
-    return () => {
-      cancelled = true;
-    };
   }, [user, authLoading, router]);
+
+  const owned = data?.owned ?? [];
+  const participating = data?.participating ?? [];
+  const completed = data?.completed ?? [];
+  const loading = isLoading && !data;
+  const showOfflineEmpty = !online && isFetched && !data && !isLoading;
 
   if (authLoading) {
     return (
@@ -72,12 +54,14 @@ export default function MeusPedaisPage() {
               Pedais que você organiza e pedais em que participa.
             </p>
           </div>
-          <Link
-            href="/pedals/entrar"
-            className="shrink-0 rounded-xl border border-primary/30 bg-surface px-3 py-2 text-sm font-semibold text-primary shadow-sm transition hover:bg-primary/5"
-          >
-            Código de convite
-          </Link>
+          {online ? (
+            <Link
+              href="/pedals/entrar"
+              className="shrink-0 rounded-xl border border-primary/30 bg-surface px-3 py-2 text-sm font-semibold text-primary shadow-sm transition hover:bg-primary/5"
+            >
+              Código de convite
+            </Link>
+          ) : null}
         </div>
 
         {loading && (
@@ -86,13 +70,15 @@ export default function MeusPedaisPage() {
           </div>
         )}
 
-        {error && (
+        {(isError || showOfflineEmpty) && !data && (
           <p className="mt-6 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {error}
+            {showOfflineEmpty
+              ? "Sem ligação e sem dados guardados para esta página."
+              : "Não foi possível carregar os pedais."}
           </p>
         )}
 
-        {!loading && !error && (
+        {!loading && data && (
           <div className="mt-8 space-y-10">
             <section className="space-y-3">
               <h2 className="text-sm font-semibold uppercase tracking-wide text-text-secondary">
@@ -155,7 +141,7 @@ export default function MeusPedaisPage() {
       </main>
 
       <FooterNav />
-      <FloatingCreatePedalButton />
+      {online ? <FloatingCreatePedalButton /> : null}
     </div>
   );
 }

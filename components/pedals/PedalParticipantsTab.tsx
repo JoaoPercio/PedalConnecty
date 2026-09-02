@@ -28,6 +28,7 @@ interface PedalParticipantsTabProps {
   onApprove: (id: string) => void;
   onReject: (id: string) => void;
   onRemoveApproved: (id: string, displayName: string) => void;
+  readOnly?: boolean;
 }
 
 export function PedalParticipantsTab({
@@ -43,9 +44,10 @@ export function PedalParticipantsTab({
   onApprove,
   onReject,
   onRemoveApproved,
+  readOnly = false,
 }: PedalParticipantsTabProps) {
   const canRemoveApproved =
-    isOwner && pedalStatus === "scheduled" && creatorId != null;
+    !readOnly && isOwner && pedalStatus === "scheduled" && creatorId != null;
   if (!canView) {
     return (
       <div className="rounded-xl border border-dashed border-gray-200 bg-background/60 px-4 py-10 text-center">
@@ -66,7 +68,7 @@ export function PedalParticipantsTab({
 
   return (
     <div className="space-y-8">
-      {isOwner && (
+      {isOwner && !readOnly && (
         <section className="space-y-3">
           <h3 className="text-sm font-semibold uppercase tracking-wide text-text-secondary">
             Admin · Solicitações pendentes

@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePedalDetail } from "@/hooks/usePedalDetail";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import type {
   ApprovedParticipant,
   PedalDetailRecord,
@@ -35,7 +37,8 @@ interface PedalDetailsProps {
 
 export function PedalDetails({ initialPedal }: PedalDetailsProps) {
   const { user, refreshProfileCache } = useAuth();
-  const [pedal, setPedal] = useState<PedalDetailRecord>(initialPedal);
+  const online = useOnlineStatus();
+  const { data: pedalData } = usePedalDetail(initialPedal.id, initialPedal);
   const [activeTab, setActiveTab] = useState<TabId>("info");
   const [participation, setParticipation] = useState<PedalParticipantRow | null>(null);
   const [participationLoaded, setParticipationLoaded] = useState(false);
@@ -49,11 +52,17 @@ export function PedalDetails({ initialPedal }: PedalDetailsProps) {
   const [removeApprovedBusyId, setRemoveApprovedBusyId] = useState<string | null>(
     null
   );
+  const [pedalLocalPatch, setPedalLocalPatch] = useState<
+    Partial<PedalDetailRecord>
+  >({});
+
+  const pedal = { ...(pedalData ?? initialPedal), ...pedalLocalPatch };
+  const readOnly = !online;
 
   const isOwner = !!user?.id && user.id === pedal.creator_id;
 
   const patchPedal = useCallback((patch: Partial<PedalDetailRecord>) => {
-    setPedal((prev) => ({ ...prev, ...patch }));
+    setPedalLocalPatch((prev) => ({ ...prev, ...patch }));
   }, []);
   const canViewParticipants =
     isOwner || participation?.status === "approved";
@@ -135,7 +144,7 @@ export function PedalDetails({ initialPedal }: PedalDetailsProps) {
   }, [pedal.id, isOwner]);
 
   const onJoin = useCallback(async () => {
-    if (!user?.id) return;
+    if (!user?.id || !online) return;
     setJoining(true);
     const { error } = await requestJoinPedal(pedal.id, user.id);
     setJoining(false);
@@ -146,31 +155,33 @@ export function PedalDetails({ initialPedal }: PedalDetailsProps) {
     setJustRequested(true);
     const row = await fetchMyParticipation(pedal.id, user.id);
     setParticipation(row);
-  }, [user?.id, pedal.id]);
+  }, [user?.id, pedal.id, online]);
 
   const onApprove = useCallback(
     async (participantRowId: string) => {
+      if (!online) return;
       setPendingBusyId(participantRowId);
       const { error } = await updateParticipantStatus(participantRowId, "approved");
       setPendingBusyId(null);
       if (!error) await refreshParticipants();
     },
-    [refreshParticipants]
+    [refreshParticipants, online]
   );
 
   const onReject = useCallback(
     async (participantRowId: string) => {
+      if (!online) return;
       setPendingBusyId(participantRowId);
       const { error } = await updateParticipantStatus(participantRowId, "rejected");
       setPendingBusyId(null);
       if (!error) await refreshParticipants();
     },
-    [refreshParticipants]
+    [refreshParticipants, online]
   );
 
   const onRemoveApproved = useCallback(
     async (participantRowId: string, displayName: string) => {
-      if (!user?.id) return;
+      if (!user?.id || !online) return;
       if (
         !window.confirm(
           `Remover ${displayName} deste pedal? A pessoa pode voltar a pedir para participar.`
@@ -192,7 +203,7 @@ export function PedalDetails({ initialPedal }: PedalDetailsProps) {
       toast.success("Participante removido.");
       await refreshParticipants();
     },
-    [user?.id, pedal.id, refreshParticipants]
+    [user?.id, pedal.id, refreshParticipants, online]
   );
 
   const onLeftPedal = useCallback(async () => {
@@ -226,6 +237,11 @@ export function PedalDetails({ initialPedal }: PedalDetailsProps) {
       </div>
 
       <div className="mt-6">
+        {readOnly ? (
+          <p className="mb-4 rounded-xl border border-amber-100 bg-amber-50 px-3 py-2 text-center text-xs text-amber-800">
+            Modo offline — apenas leitura
+          </p>
+        ) : null}
         {activeTab === "info" && (
           <PedalInfoTab
             pedal={pedal}
@@ -239,6 +255,7 @@ export function PedalDetails({ initialPedal }: PedalDetailsProps) {
             onPedalPatch={patchPedal}
             onCompletedPedal={refreshProfileCache}
             onLeftPedal={onLeftPedal}
+            readOnly={readOnly}
           />
         )}
         {activeTab === "participants" && (
@@ -255,6 +272,7 @@ export function PedalDetails({ initialPedal }: PedalDetailsProps) {
             onApprove={onApprove}
             onReject={onReject}
             onRemoveApproved={onRemoveApproved}
+            readOnly={readOnly}
           />
         )}
         {activeTab === "chat" && (

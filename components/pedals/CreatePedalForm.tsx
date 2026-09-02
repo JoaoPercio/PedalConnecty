@@ -12,6 +12,8 @@ import {
   calculateDistanceKm,
   getMinDatetimeLocalForPedal,
   validatePedalDatetimeLocal,
+  validateAverageSpeedKmh,
+  parseAverageSpeedKmh,
   type PedalDifficulty,
   type PedalTerrain,
   type PedalAgeGroup,
@@ -79,6 +81,7 @@ export function CreatePedalForm() {
   const [date, setDate] = useState("");
   const [difficulty, setDifficulty] = useState<PedalDifficulty | "">("");
   const [terrain, setTerrain] = useState<PedalTerrain | "">("");
+  const [averageSpeedKmh, setAverageSpeedKmh] = useState("");
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverPreviewUrl, setCoverPreviewUrl] = useState<string | null>(null);
 
@@ -139,12 +142,16 @@ export function CreatePedalForm() {
 
   const scheduleDateError =
     date === "" ? null : validatePedalDatetimeLocal(date);
+  const averageSpeedError =
+    averageSpeedKmh === "" ? null : validateAverageSpeedKmh(averageSpeedKmh);
   const step1Valid =
     name.trim() !== "" &&
     date !== "" &&
     scheduleDateError === null &&
     difficulty !== "" &&
-    terrain !== "";
+    terrain !== "" &&
+    averageSpeedKmh.trim() !== "" &&
+    averageSpeedError === null;
   const step2Valid =
     routeValue.geojson !== null && routeValue.coordinates.length >= 2;
 
@@ -173,6 +180,8 @@ export function CreatePedalForm() {
         if (dateErr) return dateErr;
         if (!difficulty) return "Selecione a dificuldade.";
         if (!terrain) return "Selecione o terreno.";
+        const speedErr = validateAverageSpeedKmh(averageSpeedKmh);
+        if (speedErr) return speedErr;
       }
       if (s === 2) {
         if (!routeValue.geojson || routeValue.coordinates.length < 2) {
@@ -181,7 +190,7 @@ export function CreatePedalForm() {
       }
       return null;
     },
-    [name, date, difficulty, terrain, routeValue.geojson, routeValue.coordinates.length],
+    [name, date, difficulty, terrain, averageSpeedKmh, routeValue.geojson, routeValue.coordinates.length],
   );
 
   const handleNext = useCallback(async () => {
@@ -242,6 +251,7 @@ export function CreatePedalForm() {
       end_lat: endLat,
       end_lng: endLng,
       distance_km: distanceKm,
+      average_speed_kmh: parseAverageSpeedKmh(averageSpeedKmh),
       elevation_gain: finalElevation,
       difficulty: difficulty || null,
       terrain: terrain || null,
@@ -368,6 +378,25 @@ export function CreatePedalForm() {
                 </option>
               ))}
             </select>
+          </div>
+          <div>
+            <label htmlFor="averageSpeed" className={labelClass}>
+              Velocidade média do trajeto (km/h) *
+            </label>
+            <input
+              id="averageSpeed"
+              type="number"
+              min={1}
+              max={80}
+              step={0.1}
+              value={averageSpeedKmh}
+              onChange={(e) => setAverageSpeedKmh(e.target.value)}
+              className={inputClass}
+              placeholder="Ex: 25"
+            />
+            <p className="mt-1.5 text-xs text-text-secondary">
+              Ritmo previsto do grupo durante o pedal.
+            </p>
           </div>
           <div>
             <label className={labelClass}>Imagem de capa</label>
@@ -555,6 +584,9 @@ export function CreatePedalForm() {
           </p>
           <p className="text-sm text-foreground">
             Elevação: {elevationGain ?? "—"} m
+          </p>
+          <p className="text-sm text-foreground">
+            Velocidade média: {averageSpeedKmh ? `${averageSpeedKmh} km/h` : "—"}
           </p>
           <p className="text-sm text-foreground">
             Dificuldade:{" "}

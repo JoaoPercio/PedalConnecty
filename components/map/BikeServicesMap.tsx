@@ -26,6 +26,7 @@ const KIND_ORDER: BikeServiceKind[] = [
   "oficina",
   "aluguel",
   "estacao",
+  "posto",
 ];
 
 export function BikeServicesMap() {
@@ -40,6 +41,7 @@ export function BikeServicesMap() {
     oficina: true,
     aluguel: true,
     estacao: true,
+    posto: true,
   });
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -184,6 +186,7 @@ export function BikeServicesMap() {
               oficina: true,
               aluguel: true,
               estacao: true,
+              posto: true,
             })
           }
           className={`rounded-full px-3 py-1 text-xs font-medium transition ${

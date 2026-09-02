@@ -23,6 +23,7 @@ const KIND_PIN_CONFIG: Record<
   oficina: { emoji: "🔧", colors: MAP_PIN_COLORS.secondary },
   aluguel: { emoji: "🚲", colors: MAP_PIN_COLORS.accent },
   estacao: { emoji: "🛠️", colors: MAP_PIN_COLORS.neutral },
+  posto: { emoji: "⛽", colors: MAP_PIN_COLORS.fuel },
 };
 
 export function createKindIcons(): Record<BikeServiceKind, L.DivIcon> {

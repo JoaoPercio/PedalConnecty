@@ -25,6 +25,7 @@ export interface PedalDetailRecord {
   started_at: string | null;
   ended_at: string | null;
   distance_km: number | null;
+  average_speed_kmh: number | null;
   elevation_gain: number | null;
   difficulty: PedalDifficulty | null;
   terrain: PedalTerrain | null;
