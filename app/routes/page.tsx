@@ -1,12 +1,19 @@
 "use client";
 
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { Navbar } from "@/components/Navbar";
 import { FooterNav } from "@/components/FooterNav";
 import { NearbyRoutesList } from "@/components/routes/NearbyRoutesList";
+
+function RoutesPageFallback() {
+  return (
+    <div className="flex min-h-[40vh] items-center justify-center">
+      <p className="text-sm text-text-secondary">Carregando rotas…</p>
+    </div>
+  );
+}
 
 export default function RoutesPage() {
   const { user, loading } = useAuth();
@@ -31,26 +38,10 @@ export default function RoutesPage() {
     <div className="flex min-h-screen flex-col bg-background pb-16">
       <Navbar />
 
-      <main className="mx-auto w-full max-w-lg flex-1 px-4 py-4">
-        <header className="mb-4 flex flex-wrap items-center justify-between gap-2">
-          <h1 className="text-xl font-bold text-foreground">Rotas perto</h1>
-          <div className="flex flex-wrap items-center gap-2">
-            <Link
-              href="/routes/favorites"
-              className="rounded-lg px-3 py-1.5 text-sm font-medium text-primary hover:bg-primary/10"
-            >
-              Favoritos
-            </Link>
-            <Link
-              href="/routes/create"
-              className="rounded-xl bg-gradient-to-r from-[#1B5E20] to-[#43A047] px-4 py-2 text-sm font-semibold text-white shadow-sm"
-            >
-              Criar rota
-            </Link>
-          </div>
-        </header>
-
-        <NearbyRoutesList />
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-5 sm:px-6 lg:px-8">
+        <Suspense fallback={<RoutesPageFallback />}>
+          <NearbyRoutesList />
+        </Suspense>
       </main>
 
       <FooterNav />

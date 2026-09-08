@@ -3,6 +3,7 @@
 import type { PedalAgeGroup, PedalDifficulty, PedalTerrain } from "@/lib/pedals";
 import type { PedalFiltersState } from "@/lib/pedal-filters";
 import { DISTANCE_OPTIONS_KM } from "@/lib/pedal-filters";
+import { FilterSwitch } from "@/components/filters/FilterSwitch";
 
 const DIFFICULTY_OPTIONS: { value: PedalDifficulty; label: string }[] = [
   { value: "iniciante", label: "Iniciante" },
@@ -27,44 +28,31 @@ const selectClass =
   "w-full rounded-xl border border-gray-200 bg-surface px-3 py-2.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 transition-shadow";
 const labelClass = "mb-1 block text-xs font-medium text-text-secondary";
 
-function FilterSwitch({
-  checked,
-  onCheckedChange,
-  label,
-}: {
-  checked: boolean;
-  onCheckedChange: (next: boolean) => void;
-  label: string;
-}) {
-  return (
-    <label className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-gray-100 bg-background/80 px-3 py-2.5">
-      <span className="text-sm text-foreground">{label}</span>
-      <span className="relative inline-block h-7 w-12 shrink-0">
-        <input
-          type="checkbox"
-          role="switch"
-          className="peer sr-only"
-          checked={checked}
-          onChange={(e) => onCheckedChange(e.target.checked)}
-        />
-        <span
-          className="absolute inset-0 rounded-full bg-gray-300 transition-colors peer-checked:bg-primary peer-focus-visible:ring-2 peer-focus-visible:ring-primary/40"
-          aria-hidden
-        />
-        <span
-          className="pointer-events-none absolute left-0.5 top-0.5 z-10 h-6 w-6 rounded-full bg-white shadow transition-transform duration-200 ease-out peer-checked:translate-x-[1.375rem]"
-          aria-hidden
-        />
-      </span>
-    </label>
-  );
-}
-
 interface PedalFiltersProps {
   value: PedalFiltersState;
   onChange: (next: PedalFiltersState) => void;
   onClear: () => void;
   className?: string;
+  variant?: "default" | "panel";
+}
+
+function SlidersIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden
+    >
+      <path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3" />
+      <path d="M1 14h6M9 8h6M17 16h6" />
+    </svg>
+  );
 }
 
 export function PedalFilters({
@@ -72,10 +60,13 @@ export function PedalFilters({
   onChange,
   onClear,
   className = "",
+  variant = "default",
 }: PedalFiltersProps) {
   const patch = (partial: Partial<PedalFiltersState>) => {
     onChange({ ...value, ...partial });
   };
+
+  const isPanel = variant === "panel";
 
   return (
     <div
@@ -83,18 +74,22 @@ export function PedalFilters({
     >
       <div className="flex items-center justify-between gap-2">
         <p className="text-sm font-semibold text-foreground">Filtros</p>
-        <button
-          type="button"
-          onClick={onClear}
-          className="text-xs font-medium text-primary hover:underline"
-        >
-          Limpar filtros
-        </button>
+        {isPanel ? (
+          <SlidersIcon className="h-4 w-4 text-text-secondary" />
+        ) : (
+          <button
+            type="button"
+            onClick={onClear}
+            className="text-xs font-medium text-primary hover:underline"
+          >
+            Limpar filtros
+          </button>
+        )}
       </div>
 
       <div>
         <label htmlFor="filter-distance" className={labelClass}>
-          Distância máxima (km)
+          Distância máxima
         </label>
         <select
           id="filter-distance"
@@ -174,26 +169,38 @@ export function PedalFilters({
         onCheckedChange={(onlyWithSlots) => patch({ onlyWithSlots })}
       />
 
-      <div>
-        <label htmlFor="filter-terrain" className={labelClass}>
-          Terreno (opcional)
-        </label>
-        <select
-          id="filter-terrain"
-          className={selectClass}
-          value={value.terrain}
-          onChange={(e) =>
-            patch({ terrain: e.target.value as PedalFiltersState["terrain"] })
-          }
+      {!isPanel ? (
+        <div>
+          <label htmlFor="filter-terrain" className={labelClass}>
+            Terreno (opcional)
+          </label>
+          <select
+            id="filter-terrain"
+            className={selectClass}
+            value={value.terrain}
+            onChange={(e) =>
+              patch({ terrain: e.target.value as PedalFiltersState["terrain"] })
+            }
+          >
+            <option value="">Qualquer</option>
+            {TERRAIN_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      ) : null}
+
+      {isPanel ? (
+        <button
+          type="button"
+          onClick={onClear}
+          className="mt-1 text-left text-sm font-medium text-primary hover:underline"
         >
-          <option value="">Qualquer</option>
-          {TERRAIN_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-      </div>
+          Limpar filtros
+        </button>
+      ) : null}
     </div>
   );
 }

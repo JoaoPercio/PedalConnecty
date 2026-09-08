@@ -27,11 +27,14 @@ export interface RouteRow {
   created_at: string;
 }
 
+export interface RouteCreatorProfile {
+  first_name: string | null;
+  last_name: string | null;
+  city: string | null;
+}
+
 export interface RouteWithCreator extends RouteRow {
-  creator: {
-    first_name: string | null;
-    last_name: string | null;
-  } | null;
+  creator: RouteCreatorProfile | null;
   route_ratings: { rating: number }[] | null;
 }
 
@@ -80,6 +83,37 @@ export function displayCreatorName(
   if (!p) return "Usuário";
   const parts = [p.first_name, p.last_name].filter(Boolean);
   return parts.length ? parts.join(" ") : "Usuário";
+}
+
+export function displayCreatorWithCity(
+  p: RouteCreatorProfile | null | undefined
+): string {
+  const name = displayCreatorName(p);
+  const city = p?.city?.trim();
+  return city ? `${name} · ${city}` : name;
+}
+
+export function formatDistanceKm(km: number | null | undefined): string {
+  if (km == null || Number.isNaN(Number(km))) return "—";
+  return `${new Intl.NumberFormat("pt-BR", {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  }).format(Number(km))} km`;
+}
+
+export function formatElevationM(m: number | null | undefined): string {
+  if (m == null || Number.isNaN(Number(m))) return "—";
+  return `${new Intl.NumberFormat("pt-BR", {
+    maximumFractionDigits: 0,
+  }).format(Number(m))} m`;
+}
+
+export function formatRating(avg: number | null): string {
+  if (avg == null) return "—";
+  return new Intl.NumberFormat("pt-BR", {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  }).format(avg);
 }
 
 /** First point of the line (GeoJSON is [lng, lat]) — matches DB start_lat / start_lng. */
@@ -140,7 +174,7 @@ export async function fetchRoutesForNearbyList(): Promise<{
       start_lat,
       start_lng,
       created_at,
-      profiles!routes_user_id_fkey ( first_name, last_name ),
+      profiles!routes_user_id_fkey ( first_name, last_name, city ),
       route_ratings ( rating )
     `
     )
@@ -152,7 +186,7 @@ export async function fetchRoutesForNearbyList(): Promise<{
   }
 
   const raw = (data ?? []) as unknown as {
-    profiles: { first_name: string | null; last_name: string | null } | null;
+    profiles: RouteCreatorProfile | null;
     route_ratings: { rating: number }[] | null;
     [key: string]: unknown;
   }[];
@@ -215,7 +249,7 @@ export async function fetchRouteById(
       start_lat,
       start_lng,
       created_at,
-      profiles!routes_user_id_fkey ( first_name, last_name ),
+      profiles!routes_user_id_fkey ( first_name, last_name, city ),
       route_ratings ( rating )
     `
     )
@@ -226,7 +260,7 @@ export async function fetchRouteById(
   if (!data) return { route: null, error: null };
 
   const row = data as unknown as {
-    profiles: { first_name: string | null; last_name: string | null } | null;
+    profiles: RouteCreatorProfile | null;
     route_ratings: { rating: number }[] | null;
   } & RouteRow;
 
@@ -448,7 +482,7 @@ export async function fetchFavoriteRoutesForUser(
       start_lat,
       start_lng,
       created_at,
-      profiles!routes_user_id_fkey ( first_name, last_name ),
+      profiles!routes_user_id_fkey ( first_name, last_name, city ),
       route_ratings ( rating )
     `
     )
@@ -457,7 +491,7 @@ export async function fetchFavoriteRoutesForUser(
   if (routesError) return { routes: [], error: routesError };
 
   const raw = (routeRows ?? []) as unknown as {
-    profiles: { first_name: string | null; last_name: string | null } | null;
+    profiles: RouteCreatorProfile | null;
     route_ratings: { rating: number }[] | null;
     [key: string]: unknown;
   }[];

@@ -29,6 +29,7 @@ export interface NearbyPedalRow {
   max_participants: number | null;
   age_group: PedalAgeGroup | null;
   visibility: PedalVisibility;
+  cover_image_url: string | null;
   status: string;
 }
 
@@ -99,6 +100,7 @@ export async function loadNearbyPedalsForView(
     age_group: p.age_group,
     visibility: p.visibility,
     max_participants: p.max_participants,
+    cover_image_url: p.cover_image_url ?? null,
     start_lat: Number(p.start_lat),
     start_lng: Number(p.start_lng),
     computedDistanceKm: roundDistanceKm(

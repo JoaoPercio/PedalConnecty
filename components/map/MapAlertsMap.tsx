@@ -24,8 +24,24 @@ import {
 import { MapAlertsCreateModal } from "@/components/map/MapAlertsCreateModal";
 import { AvatarImg } from "@/components/AvatarImg";
 import { createMapPinIcon, MAP_PIN_STYLES } from "@/components/map/MapPinIcon";
+import { FilterModal } from "@/components/filters/FilterModal";
+import { CategoryFilters } from "@/components/filters/CategoryFilters";
+import { MapFilterChrome } from "@/components/map/MapFilterChrome";
+import { MapZoomControls } from "@/components/map/MapZoomControls";
+import {
+  allCategoriesSelected,
+  countActiveCategoryFilters,
+  getCategoryFilterChips,
+  removeCategoryFilterChip,
+} from "@/lib/category-filters";
 
 const ZOOM = 14;
+
+const ALERT_TYPE_KEYS = MAP_ALERT_TYPE_OPTIONS.map((o) => o.value);
+const ALERT_FILTER_OPTIONS = MAP_ALERT_TYPE_OPTIONS.map((o) => ({
+  id: o.value,
+  label: `${o.emoji} ${o.label}`,
+}));
 
 function alertLatLng(a: MapAlertWithProfile): [number, number] {
   return [Number(a.lat), Number(a.lng)];
@@ -47,7 +63,15 @@ function createAlertDivIcon(L: typeof import("leaflet"), type: MapAlertType): L.
   });
 }
 
-export function MapAlertsMap() {
+interface MapAlertsMapProps {
+  filterModalOpen?: boolean;
+  onFilterModalOpenChange?: (open: boolean) => void;
+}
+
+export function MapAlertsMap({
+  filterModalOpen: externalFilterOpen,
+  onFilterModalOpenChange,
+}: MapAlertsMapProps) {
   const { user } = useAuth();
   const [userPos, setUserPos] = useState<[number, number] | null>(null);
   const [locationDenied, setLocationDenied] = useState(false);
@@ -58,12 +82,13 @@ export function MapAlertsMap() {
   const [selectedAlert, setSelectedAlert] = useState<MapAlertWithProfile | null>(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [createSubmitting, setCreateSubmitting] = useState(false);
-  const [typeFilters, setTypeFilters] = useState<Record<MapAlertType, boolean>>(() =>
-    Object.fromEntries(MAP_ALERT_TYPE_OPTIONS.map((o) => [o.value, true])) as Record<
-      MapAlertType,
-      boolean
-    >
+  const [typeFilters, setTypeFilters] = useState<Record<MapAlertType, boolean>>(
+    () => allCategoriesSelected(ALERT_TYPE_KEYS)
   );
+  const [internalFilterOpen, setInternalFilterOpen] = useState(false);
+
+  const filterModalOpen = externalFilterOpen ?? internalFilterOpen;
+  const setFilterModalOpen = onFilterModalOpenChange ?? setInternalFilterOpen;
 
   const lastCreateAtRef = useRef(0);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -145,10 +170,11 @@ export function MapAlertsMap() {
     if (!userPos || !el) return;
     if (mapRef.current) return;
 
-    const map = L.map(el, { scrollWheelZoom: true }).setView(userPos, ZOOM);
+    const map = L.map(el, { scrollWheelZoom: true, zoomControl: false }).setView(
+      userPos,
+      ZOOM
+    );
     mapRef.current = map;
-
-    L.control.zoom({ position: "topright" }).addTo(map);
 
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution:
@@ -238,6 +264,19 @@ export function MapAlertsMap() {
     });
   }, [filteredAlerts, userPos]);
 
+  const handleLocate = useCallback(() => {
+    if (!mapRef.current || !userPos) return;
+    mapRef.current.setView(userPos, ZOOM, { animate: true });
+  }, [userPos]);
+
+  const handleZoomIn = useCallback(() => {
+    mapRef.current?.zoomIn();
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    mapRef.current?.zoomOut();
+  }, []);
+
   const openCreateModal = () => {
     if (!user) {
       toast.error("Faça login para criar alertas.");
@@ -295,11 +334,25 @@ export function MapAlertsMap() {
     await loadAlerts();
   };
 
-  const toggleTypeFilter = (t: MapAlertType) => {
-    setTypeFilters((prev) => ({ ...prev, [t]: !prev[t] }));
-  };
+  const clearFilters = useCallback(() => {
+    setTypeFilters(allCategoriesSelected(ALERT_TYPE_KEYS));
+  }, []);
 
-  const allTypesOn = MAP_ALERT_TYPE_OPTIONS.every((o) => typeFilters[o.value]);
+  const handleRemoveChip = useCallback((chipId: string) => {
+    setTypeFilters((prev) =>
+      removeCategoryFilterChip(prev, chipId, ALERT_TYPE_KEYS)
+    );
+  }, []);
+
+  const handleCategoryChange = useCallback((id: string, next: boolean) => {
+    setTypeFilters((prev) => ({ ...prev, [id]: next }));
+  }, []);
+
+  const filterChips = useMemo(
+    () => getCategoryFilterChips(typeFilters, ALERT_FILTER_OPTIONS),
+    [typeFilters]
+  );
+  const activeCount = countActiveCategoryFilters(typeFilters, ALERT_TYPE_KEYS);
 
   if (loadingLocation) {
     return (
@@ -323,82 +376,63 @@ export function MapAlertsMap() {
   const meta = selectedAlert ? mapAlertTypeMeta(selectedAlert.type) : null;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex flex-wrap gap-2 border-b border-gray-100 bg-surface px-3 py-2">
-        <button
-          type="button"
-          onClick={() =>
-            setTypeFilters(
-              Object.fromEntries(MAP_ALERT_TYPE_OPTIONS.map((o) => [o.value, true])) as Record<
-                MapAlertType,
-                boolean
-              >
-            )
-          }
-          className={`rounded-full px-3 py-1 text-xs font-medium transition ${
-            allTypesOn
-              ? "bg-primary text-white"
-              : "bg-background text-text-secondary ring-1 ring-gray-200"
-          }`}
-        >
-          Todos
-        </button>
-        {MAP_ALERT_TYPE_OPTIONS.map((o) => (
-          <button
-            key={o.value}
-            type="button"
-            onClick={() => toggleTypeFilter(o.value)}
-            className={`rounded-full px-3 py-1 text-xs font-medium transition ${
-              typeFilters[o.value]
-                ? "bg-primary/15 text-primary ring-1 ring-primary/30"
-                : "bg-background text-text-secondary opacity-60 ring-1 ring-gray-200"
-            }`}
-          >
-            {o.emoji} {o.label}
-          </button>
-        ))}
-      </div>
-
-      {fetchError && (
-        <div className="border-b border-red-100 bg-red-50 px-4 py-2">
-          <p className="text-center text-xs text-red-700">{fetchError}</p>
-        </div>
-      )}
-
-      <div className="relative min-h-0 flex-1">
-        {loadingAlerts && alerts.length === 0 && (
-          <div className="absolute inset-0 z-[500] flex items-center justify-center bg-surface/80 backdrop-blur-[1px]">
-            <div className="h-10 w-10 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-          </div>
-        )}
-
-        <div
-          ref={containerRef}
-          className="h-full min-h-[280px] w-full touch-manipulation"
+    <MapFilterChrome
+      chips={filterChips}
+      activeCount={activeCount}
+      onRemoveChip={handleRemoveChip}
+      onOpenFilters={() => setFilterModalOpen(true)}
+      loading={loadingAlerts && alerts.length === 0}
+      loadingLabel="Carregando alertas"
+      desktopPanel={
+        <CategoryFilters
+          variant="panel"
+          options={ALERT_FILTER_OPTIONS}
+          value={typeFilters}
+          onChange={handleCategoryChange}
+          onClear={clearFilters}
         />
+      }
+    >
+      <div
+        ref={containerRef}
+        className="absolute inset-0 z-0 touch-manipulation"
+      />
 
-        {loadingAlerts && alerts.length > 0 && (
-          <div className="pointer-events-none absolute right-3 top-3 z-[500] flex items-center gap-2 rounded-full border border-gray-200/80 bg-surface/95 px-3 py-1.5 shadow-md backdrop-blur-sm">
-            <span
-              className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-primary border-t-transparent"
-              aria-hidden
-            />
-            <span className="text-xs font-medium text-text-secondary">Atualizando…</span>
-          </div>
-        )}
+      {fetchError ? (
+        <div className="absolute bottom-24 left-4 right-4 z-[500] rounded-xl border border-red-100 bg-red-50/95 px-4 py-3 shadow-md backdrop-blur-sm lg:bottom-4 lg:left-auto lg:right-4 lg:max-w-xs">
+          <p className="text-xs text-red-700">{fetchError}</p>
+        </div>
+      ) : null}
 
-        <button
-          type="button"
-          onClick={openCreateModal}
-          className="fixed bottom-20 right-4 z-[1010] flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-r from-[#1B5E20] to-[#43A047] text-2xl font-light text-white shadow-lg shadow-primary/30 transition-opacity hover:opacity-95 active:opacity-90 focus:outline-none focus:ring-4 focus:ring-primary/30"
-          aria-label="Criar alerta"
-        >
-          +
-        </button>
-      </div>
+      {loadingAlerts && alerts.length > 0 ? (
+        <div className="pointer-events-none absolute right-3 top-3 z-[500] flex items-center gap-2 rounded-full border border-gray-200/80 bg-surface/95 px-3 py-1.5 shadow-md backdrop-blur-sm lg:right-16">
+          <span
+            className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-primary border-t-transparent"
+            aria-hidden
+          />
+          <span className="text-xs font-medium text-text-secondary">
+            Atualizando…
+          </span>
+        </div>
+      ) : null}
+
+      <MapZoomControls
+        onZoomIn={handleZoomIn}
+        onZoomOut={handleZoomOut}
+        onLocate={handleLocate}
+      />
+
+      <button
+        type="button"
+        onClick={openCreateModal}
+        className="fixed bottom-20 right-4 z-[1010] flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-r from-[#1B5E20] to-[#43A047] text-2xl font-light text-white shadow-lg shadow-primary/30 transition-opacity hover:opacity-95 active:opacity-90 focus:outline-none focus:ring-4 focus:ring-primary/30"
+        aria-label="Criar alerta"
+      >
+        +
+      </button>
 
       {selectedAlert && meta && (
-        <div className="pointer-events-none fixed bottom-20 left-0 right-0 z-[1100] flex justify-center px-4 pb-safe">
+        <div className="pointer-events-none absolute inset-x-0 bottom-4 z-[1100] flex justify-center px-4 lg:bottom-4 lg:left-80">
           <div className="pointer-events-auto w-full max-w-md rounded-2xl border border-gray-200 bg-surface p-4 shadow-xl">
             <div className="flex gap-3">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xl">
@@ -458,28 +492,22 @@ export function MapAlertsMap() {
         submitting={createSubmitting}
       />
 
+      <FilterModal
+        open={filterModalOpen}
+        onClose={() => setFilterModalOpen(false)}
+        title="Filtrar alertas"
+      >
+        <CategoryFilters
+          options={ALERT_FILTER_OPTIONS}
+          value={typeFilters}
+          onChange={handleCategoryChange}
+          onClear={clearFilters}
+        />
+      </FilterModal>
+
       <style>{`
         ${MAP_PIN_STYLES}
-        .leaflet-container .leaflet-top.leaflet-right {
-          margin-top: 12px;
-          margin-right: 12px;
-        }
-        .leaflet-container .leaflet-control-zoom a {
-          width: 32px !important;
-          height: 32px !important;
-          line-height: 30px !important;
-          font-size: 18px !important;
-          font-weight: 600;
-          color: #1b5e20 !important;
-          border-color: rgba(27, 94, 32, 0.25) !important;
-          background: #ffffff !important;
-        }
-        .leaflet-container .leaflet-control-zoom a:hover {
-          background: linear-gradient(to bottom, #1b5e20, #43a047) !important;
-          color: #ffffff !important;
-          border-color: transparent !important;
-        }
       `}</style>
-    </div>
+    </MapFilterChrome>
   );
 }

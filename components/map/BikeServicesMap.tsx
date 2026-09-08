@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import {
@@ -18,6 +18,16 @@ import {
   createKindIcons,
 } from "@/components/map/BikeServiceMarker";
 import { MAP_PIN_STYLES } from "@/components/map/MapPinIcon";
+import { FilterModal } from "@/components/filters/FilterModal";
+import { CategoryFilters } from "@/components/filters/CategoryFilters";
+import { MapFilterChrome } from "@/components/map/MapFilterChrome";
+import { MapZoomControls } from "@/components/map/MapZoomControls";
+import {
+  allCategoriesSelected,
+  countActiveCategoryFilters,
+  getCategoryFilterChips,
+  removeCategoryFilterChip,
+} from "@/lib/category-filters";
 
 const ZOOM = 12;
 
@@ -29,20 +39,33 @@ const KIND_ORDER: BikeServiceKind[] = [
   "posto",
 ];
 
-export function BikeServicesMap() {
+const KIND_FILTER_OPTIONS = KIND_ORDER.map((k) => ({
+  id: k,
+  label: kindLabel(k),
+}));
+
+interface BikeServicesMapProps {
+  filterModalOpen?: boolean;
+  onFilterModalOpenChange?: (open: boolean) => void;
+}
+
+export function BikeServicesMap({
+  filterModalOpen: externalFilterOpen,
+  onFilterModalOpenChange,
+}: BikeServicesMapProps) {
   const [userPos, setUserPos] = useState<[number, number] | null>(null);
   const [locationDenied, setLocationDenied] = useState(false);
   const [places, setPlaces] = useState<BikeServicePlace[]>([]);
   const [loadingLocation, setLoadingLocation] = useState(true);
   const [loadingPlaces, setLoadingPlaces] = useState(false);
   const [fetchError, setFetchError] = useState(false);
-  const [filters, setFilters] = useState<Record<BikeServiceKind, boolean>>({
-    loja: true,
-    oficina: true,
-    aluguel: true,
-    estacao: true,
-    posto: true,
-  });
+  const [filters, setFilters] = useState<Record<BikeServiceKind, boolean>>(
+    () => allCategoriesSelected(KIND_ORDER)
+  );
+  const [internalFilterOpen, setInternalFilterOpen] = useState(false);
+
+  const filterModalOpen = externalFilterOpen ?? internalFilterOpen;
+  const setFilterModalOpen = onFilterModalOpenChange ?? setInternalFilterOpen;
 
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -101,7 +124,10 @@ export function BikeServicesMap() {
     if (!userPos || !el) return;
     if (mapRef.current) return;
 
-    const map = L.map(el, { scrollWheelZoom: true }).setView(userPos, ZOOM);
+    const map = L.map(el, { scrollWheelZoom: true, zoomControl: false }).setView(
+      userPos,
+      ZOOM
+    );
     mapRef.current = map;
 
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -130,6 +156,16 @@ export function BikeServicesMap() {
   }, [userPos]);
 
   useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => {
+      mapRef.current?.invalidateSize();
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [userPos]);
+
+  useEffect(() => {
     const map = mapRef.current;
     const layer = poiLayerRef.current;
     if (!map || !layer || !userPos) return;
@@ -148,15 +184,40 @@ export function BikeServicesMap() {
     });
   }, [visiblePlaces, userPos, icons]);
 
-  const toggleFilter = (k: BikeServiceKind) => {
-    setFilters((prev) => ({ ...prev, [k]: !prev[k] }));
-  };
+  const handleLocate = useCallback(() => {
+    if (!mapRef.current || !userPos) return;
+    mapRef.current.setView(userPos, ZOOM, { animate: true });
+  }, [userPos]);
 
-  const allFiltersOn = KIND_ORDER.every((k) => filters[k]);
+  const handleZoomIn = useCallback(() => {
+    mapRef.current?.zoomIn();
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    mapRef.current?.zoomOut();
+  }, []);
+
+  const clearFilters = useCallback(() => {
+    setFilters(allCategoriesSelected(KIND_ORDER));
+  }, []);
+
+  const handleRemoveChip = useCallback((chipId: string) => {
+    setFilters((prev) => removeCategoryFilterChip(prev, chipId, KIND_ORDER));
+  }, []);
+
+  const handleCategoryChange = useCallback((id: string, next: boolean) => {
+    setFilters((prev) => ({ ...prev, [id]: next }));
+  }, []);
+
+  const filterChips = useMemo(
+    () => getCategoryFilterChips(filters, KIND_FILTER_OPTIONS),
+    [filters]
+  );
+  const activeCount = countActiveCategoryFilters(filters, KIND_ORDER);
 
   if (loadingLocation) {
     return (
-      <div className="flex min-h-[50vh] flex-1 items-center justify-center bg-surface">
+      <div className="flex h-full min-h-0 flex-1 items-center justify-center bg-surface">
         <div className="h-10 w-10 animate-spin rounded-full border-2 border-primary border-t-transparent" />
       </div>
     );
@@ -165,85 +226,77 @@ export function BikeServicesMap() {
   if (!userPos) {
     if (locationDenied) {
       return (
-        <div className="flex min-h-[50vh] flex-1 flex-col items-center justify-center gap-3 bg-surface px-6 text-center">
-          <p className="max-w-md text-sm text-foreground">{LOCATION_PERMISSION_MESSAGE}</p>
+        <div className="flex h-full min-h-0 flex-1 flex-col items-center justify-center gap-3 bg-surface px-6 text-center">
+          <p className="max-w-md text-sm text-foreground">
+            {LOCATION_PERMISSION_MESSAGE}
+          </p>
         </div>
       );
     }
     return null;
   }
 
-  const loading = loadingPlaces;
-
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex flex-wrap gap-2 border-b border-gray-100 bg-surface px-3 py-2">
-        <button
-          type="button"
-          onClick={() =>
-            setFilters({
-              loja: true,
-              oficina: true,
-              aluguel: true,
-              estacao: true,
-              posto: true,
-            })
-          }
-          className={`rounded-full px-3 py-1 text-xs font-medium transition ${
-            allFiltersOn
-              ? "bg-primary text-white"
-              : "bg-background text-text-secondary ring-1 ring-gray-200"
-          }`}
-        >
-          Todos
-        </button>
-        {KIND_ORDER.map((k) => (
-          <button
-            key={k}
-            type="button"
-            onClick={() => toggleFilter(k)}
-            className={`rounded-full px-3 py-1 text-xs font-medium transition ${
-              filters[k]
-                ? "bg-primary/15 text-primary ring-1 ring-primary/30"
-                : "bg-background text-text-secondary opacity-60 ring-1 ring-gray-200"
-            }`}
-          >
-            {kindLabel(k)}
-          </button>
-        ))}
-      </div>
+    <MapFilterChrome
+      chips={filterChips}
+      activeCount={activeCount}
+      onRemoveChip={handleRemoveChip}
+      onOpenFilters={() => setFilterModalOpen(true)}
+      loading={loadingPlaces}
+      loadingLabel="Carregando lojas"
+      desktopPanel={
+        <CategoryFilters
+          variant="panel"
+          options={KIND_FILTER_OPTIONS}
+          value={filters}
+          onChange={handleCategoryChange}
+          onClear={clearFilters}
+        />
+      }
+    >
+      <div
+        ref={containerRef}
+        className="absolute inset-0 z-0 touch-manipulation"
+      />
 
-      {fetchError && (
-        <div className="border-b border-red-100 bg-red-50 px-4 py-2">
-          <p className="text-center text-xs text-red-700">
+      {fetchError ? (
+        <div className="absolute bottom-4 left-4 right-4 z-[500] rounded-xl border border-red-100 bg-red-50/95 px-4 py-3 shadow-md backdrop-blur-sm lg:left-auto lg:right-4 lg:max-w-xs">
+          <p className="text-xs text-red-700">
             Erro ao buscar locais. Tente novamente.
           </p>
         </div>
-      )}
+      ) : null}
 
-      {!loading && !fetchError && places.length === 0 && (
-        <div className="border-b border-gray-100 bg-background/80 px-4 py-3">
-          <p className="text-center text-sm text-text-secondary">
+      {!loadingPlaces && !fetchError && places.length === 0 ? (
+        <div className="absolute bottom-4 left-4 right-4 z-[500] rounded-xl border border-gray-200 bg-surface/95 px-4 py-3 shadow-md backdrop-blur-sm lg:left-auto lg:right-4 lg:max-w-xs">
+          <p className="text-xs text-text-secondary">
             Nenhum local encontrado em um raio de 30km
           </p>
         </div>
-      )}
+      ) : null}
 
-      <div className="relative min-h-0 flex-1">
-        {loading && (
-          <div className="absolute inset-0 z-[500] flex items-center justify-center bg-surface/80 backdrop-blur-[1px]">
-            <div className="h-10 w-10 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-          </div>
-        )}
-        <div
-          ref={containerRef}
-          className="h-full min-h-[280px] w-full touch-manipulation"
+      <MapZoomControls
+        onZoomIn={handleZoomIn}
+        onZoomOut={handleZoomOut}
+        onLocate={handleLocate}
+      />
+
+      <FilterModal
+        open={filterModalOpen}
+        onClose={() => setFilterModalOpen(false)}
+        title="Filtrar lojas e serviços"
+      >
+        <CategoryFilters
+          options={KIND_FILTER_OPTIONS}
+          value={filters}
+          onChange={handleCategoryChange}
+          onClear={clearFilters}
         />
-      </div>
+      </FilterModal>
 
       <style>{`
         ${MAP_PIN_STYLES}
       `}</style>
-    </div>
+    </MapFilterChrome>
   );
 }

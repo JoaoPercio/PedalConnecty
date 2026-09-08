@@ -18,7 +18,10 @@ import { StepIndicator } from "./components/StepIndicator";
 import { StepPersonalInfo } from "./components/StepPersonalInfo";
 import { StepSkillLevel } from "./components/StepSkillLevel";
 import { StepAccount } from "./components/StepAccount";
-import { AppLogo } from "@/components/AppLogo";
+import { AuthLayout } from "@/components/auth/AuthLayout";
+import { AuthBrand } from "@/components/auth/AuthBrand";
+import { AuthDivider } from "@/components/auth/AuthDivider";
+import { AuthPrimaryButton } from "@/components/auth/AuthPrimaryButton";
 
 const initialFormData: RegistrationFormData = {
   step1: {
@@ -66,9 +69,7 @@ export default function RegisterPage() {
   const [formData, setFormData] = useState<RegistrationFormData>(initialFormData);
   const [step1Errors, setStep1Errors] = useState<Partial<Record<keyof Step1Data, string>>>({});
   const [step3Errors, setStep3Errors] = useState<Partial<Record<keyof Step3Data, string>>>({});
-  /** Evita mostrar erros do passo 3 até envio explícito (submit ou botão). */
   const [step3SubmitTried, setStep3SubmitTried] = useState(false);
-  /** Evita clique fantasma no mesmo pixel ao trocar "Próximo" por "Criar conta". */
   const [step3PrimaryReady, setStep3PrimaryReady] = useState(false);
   const [loading, setLoading] = useState(false);
   const submitStep3Lock = useRef(false);
@@ -142,7 +143,6 @@ export default function RegisterPage() {
     setSubmitError(null);
   };
 
-  /** "Criar conta" é type="button" para o mouseup do "Próximo" não disparar envio; Enter usa onSubmit. */
   const submitStep3 = async () => {
     if (submitStep3Lock.current) return;
     submitStep3Lock.current = true;
@@ -176,104 +176,88 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 sm:p-6">
-      <div className="w-full max-w-[480px] bg-surface rounded-2xl shadow-lg shadow-black/5 p-6 sm:p-8">
-        <div className="flex flex-col items-center gap-2 mb-2">
-          <AppLogo className="h-12 w-12 sm:h-14 sm:w-14" priority />
-          <h1 className="text-xl sm:text-2xl font-semibold text-foreground tracking-tight">
-            PedalConnect
-          </h1>
-          <p className="text-sm text-text-secondary">Criar conta</p>
-        </div>
+    <AuthLayout maxWidthClass="max-w-[480px]">
+      <AuthBrand subtitle="Criar conta" priority />
 
-        <StepIndicator currentStep={step} />
+      <StepIndicator currentStep={step} />
 
-        <form noValidate onSubmit={handleFormSubmit} className="flex flex-col gap-6">
-          {step === 1 && (
-            <>
-              <GoogleSignInButton disabled={loading} />
-              <div className="relative flex items-center justify-center">
-                <span
-                  className="absolute inset-x-0 top-1/2 h-px bg-gray-200"
-                  aria-hidden
-                />
-                <span className="relative bg-surface px-3 text-xs text-text-secondary uppercase tracking-wide">
-                  ou cadastre-se com email
-                </span>
-              </div>
-              <StepPersonalInfo
-                data={formData.step1}
-                onChange={setStep1}
-                errors={step1Errors}
-              />
-            </>
-          )}
-          {step === 2 && (
-            <StepSkillLevel
-              data={formData.step2}
-              onChange={setStep2}
+      <form noValidate onSubmit={handleFormSubmit} className="flex flex-col gap-6">
+        {step === 1 && (
+          <>
+            <GoogleSignInButton disabled={loading} />
+            <AuthDivider label="ou cadastre-se com email" />
+            <StepPersonalInfo
+              data={formData.step1}
+              onChange={setStep1}
+              errors={step1Errors}
             />
-          )}
-          {step === 3 && (
-            <StepAccount
-              data={formData.step3}
-              onChange={setStep3}
-              errors={step3SubmitTried ? step3Errors : {}}
-              avatarPreviewUrl={avatarPreviewUrl}
+          </>
+        )}
+        {step === 2 && (
+          <StepSkillLevel
+            data={formData.step2}
+            onChange={setStep2}
+          />
+        )}
+        {step === 3 && (
+          <StepAccount
+            data={formData.step3}
+            onChange={setStep3}
+            errors={step3SubmitTried ? step3Errors : {}}
+            avatarPreviewUrl={avatarPreviewUrl}
+            disabled={loading}
+          />
+        )}
+
+        {submitError && (
+          <p className="rounded-xl bg-red-50 px-4 py-2 text-sm text-red-600">
+            {submitError}
+          </p>
+        )}
+
+        <div className="mt-2 flex gap-3">
+          {step > 1 ? (
+            <button
+              type="button"
+              onClick={handleBack}
               disabled={loading}
-            />
+              className="flex-1 rounded-xl bg-gray-100 py-3.5 font-medium text-foreground transition-colors hover:bg-gray-200 disabled:opacity-70"
+            >
+              Voltar
+            </button>
+          ) : (
+            <div className="flex-1" />
           )}
-
-          {submitError && (
-            <p className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-2">
-              {submitError}
-            </p>
+          {step < 3 ? (
+            <AuthPrimaryButton
+              type="button"
+              onClick={handleNext}
+              className="flex-1"
+            >
+              Próximo
+            </AuthPrimaryButton>
+          ) : (
+            <AuthPrimaryButton
+              type="button"
+              disabled={loading || !step3PrimaryReady}
+              onClick={() => void submitStep3()}
+              className="flex-1"
+            >
+              {loading ? "Criando conta…" : "Criar conta"}
+            </AuthPrimaryButton>
           )}
+        </div>
+      </form>
 
-          <div className="flex gap-3 mt-2">
-            {step > 1 ? (
-              <button
-                type="button"
-                onClick={handleBack}
-                disabled={loading}
-                className="flex-1 py-3.5 rounded-xl font-medium text-foreground bg-gray-100 hover:bg-gray-200 disabled:opacity-70 transition-colors"
-              >
-                Voltar
-              </button>
-            ) : (
-              <div className="flex-1" />
-            )}
-            {step < 3 ? (
-              <button
-                type="button"
-                onClick={handleNext}
-                className="flex-1 py-3.5 rounded-xl font-medium text-white bg-gradient-to-r from-[#1B5E20] to-[#43A047] hover:opacity-95 active:opacity-90 transition-opacity shadow-md shadow-primary/20"
-              >
-                Próximo
-              </button>
-            ) : (
-              <button
-                type="button"
-                disabled={loading || !step3PrimaryReady}
-                onClick={() => void submitStep3()}
-                className="flex-1 py-3.5 rounded-xl font-medium text-white bg-gradient-to-r from-[#1B5E20] to-[#43A047] hover:opacity-95 active:opacity-90 disabled:opacity-70 transition-opacity shadow-md shadow-primary/20"
-              >
-                {loading ? "Criando conta…" : "Criar conta"}
-              </button>
-            )}
-          </div>
-        </form>
-
-        <p className="mt-6 text-center text-sm text-text-secondary">
-          Já tem uma conta?{" "}
-          <Link
-            href="/login"
-            className="font-medium text-primary hover:text-secondary transition-colors"
-          >
-            Entrar
-          </Link>
-        </p>
-      </div>
-    </div>
+      <p className="mt-6 text-center text-sm text-text-secondary">
+        Já tem uma conta?{" "}
+        <Link
+          href="/login"
+          className="font-semibold text-primary transition-colors hover:text-secondary"
+        >
+          Entrar
+        </Link>
+      </p>
+    </AuthLayout>
   );
 }

@@ -15,6 +15,9 @@ import { StepIndicator } from "../components/StepIndicator";
 import { StepPersonalInfo } from "../components/StepPersonalInfo";
 import { StepSkillLevel } from "../components/StepSkillLevel";
 import { AvatarUpload } from "../components/AvatarUpload";
+import { AuthLayout } from "@/components/auth/AuthLayout";
+import { AuthBrand } from "@/components/auth/AuthBrand";
+import { AuthPrimaryButton } from "@/components/auth/AuthPrimaryButton";
 
 function validateStep2(_data: Step2Data): Record<string, never> {
   return {};
@@ -179,23 +182,15 @@ export default function RegisterCompletePage() {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 sm:p-6">
-      <div className="w-full max-w-[480px] bg-surface rounded-2xl shadow-lg shadow-black/5 p-6 sm:p-8">
-        <div className="flex flex-col items-center gap-2 mb-2">
-          <h1 className="text-xl sm:text-2xl font-semibold text-foreground tracking-tight">
-            Completar cadastro
-          </h1>
-          <p className="text-sm text-text-secondary text-center">
-            Precisamos destes dados para usar o PedalConnect.
-          </p>
-        </div>
+    <AuthLayout maxWidthClass="max-w-[480px]" showFeatures={false}>
+      <AuthBrand subtitle="Precisamos destes dados para usar o PedalConnect." />
 
-        <StepIndicator
-          currentStep={step}
-          labels={["Dados pessoais", "Nível", "Foto"]}
-        />
+      <StepIndicator
+        currentStep={step}
+        labels={["Dados pessoais", "Nível", "Foto"]}
+      />
 
-        <div className="flex flex-col gap-6 mt-6">
+      <div className="mt-6 flex flex-col gap-6">
           {step === 1 && (
             <StepPersonalInfo
               data={step1}
@@ -242,36 +237,31 @@ export default function RegisterCompletePage() {
               <div className="flex-1" />
             )}
             {step < 3 ? (
-              <button
-                type="button"
-                onClick={handleNext}
-                className="flex-1 py-3.5 rounded-xl font-medium text-white bg-gradient-to-r from-[#1B5E20] to-[#43A047] hover:opacity-95 active:opacity-90 transition-opacity shadow-md shadow-primary/20"
-              >
-                Próximo
-              </button>
-            ) : (
-              <button
-                type="button"
-                disabled={loading}
-                onClick={() => void handleSubmit()}
-                className="flex-1 py-3.5 rounded-xl font-medium text-white bg-gradient-to-r from-[#1B5E20] to-[#43A047] hover:opacity-95 active:opacity-90 disabled:opacity-70 transition-opacity shadow-md shadow-primary/20"
-              >
-                {loading ? "Salvando…" : "Concluir"}
-              </button>
-            )}
-          </div>
+            <AuthPrimaryButton type="button" onClick={handleNext} className="flex-1">
+              Próximo
+            </AuthPrimaryButton>
+          ) : (
+            <AuthPrimaryButton
+              type="button"
+              disabled={loading}
+              onClick={() => void handleSubmit()}
+              className="flex-1"
+            >
+              {loading ? "Salvando…" : "Concluir"}
+            </AuthPrimaryButton>
+          )}
         </div>
-
-        <p className="mt-6 text-center text-sm text-text-secondary">
-          <button
-            type="button"
-            onClick={() => void signOut()}
-            className="font-medium text-primary hover:text-secondary transition-colors"
-          >
-            Sair da conta
-          </button>
-        </p>
       </div>
-    </div>
+
+      <p className="mt-6 text-center text-sm text-text-secondary">
+        <button
+          type="button"
+          onClick={() => void signOut()}
+          className="font-semibold text-primary transition-colors hover:text-secondary"
+        >
+          Sair da conta
+        </button>
+      </p>
+    </AuthLayout>
   );
 }

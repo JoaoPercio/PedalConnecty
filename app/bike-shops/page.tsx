@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
@@ -23,6 +23,7 @@ const BikeServicesMap = dynamic(
 export default function BikeShopsPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const [filterModalOpen, setFilterModalOpen] = useState(false);
 
   useEffect(() => {
     if (loading) return;
@@ -45,19 +46,13 @@ export default function BikeShopsPage() {
 
   return (
     <div className="flex h-[100dvh] flex-col overflow-hidden bg-background pb-16">
-      <Navbar />
+      <Navbar onMenuClick={() => setFilterModalOpen(true)} />
 
-      <div className="shrink-0 border-b border-gray-100 bg-surface px-4 py-3">
-        <h1 className="text-lg font-semibold text-foreground">
-          Lojas e serviços
-        </h1>
-        <p className="mt-0.5 text-xs text-text-secondary">
-          Locais de bicicleta em até 30 km
-        </p>
-      </div>
-
-      <main className="relative flex min-h-0 flex-1 flex-col">
-        <BikeServicesMap />
+      <main className="relative min-h-0 flex-1">
+        <BikeServicesMap
+          filterModalOpen={filterModalOpen}
+          onFilterModalOpenChange={setFilterModalOpen}
+        />
       </main>
 
       <FooterNav />

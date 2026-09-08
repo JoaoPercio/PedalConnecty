@@ -6,6 +6,8 @@ export interface PedalSummary {
   date: string;
   max_participants: number | null;
   approvedCount: number;
+  cover_image_url: string | null;
+  status?: string;
 }
 
 async function approvedCountsByPedalId(
@@ -30,15 +32,16 @@ async function approvedCountsByPedalId(
 
 type PedalRow = Pick<
   PedalSummary,
-  "id" | "name" | "date" | "max_participants"
+  "id" | "name" | "date" | "max_participants" | "cover_image_url"
 > & { status?: string };
 
 function withCounts(
-  rows: Pick<PedalSummary, "id" | "name" | "date" | "max_participants">[],
+  rows: PedalRow[],
   counts: Map<string, number>
 ): PedalSummary[] {
   return rows.map((r) => ({
     ...r,
+    cover_image_url: r.cover_image_url ?? null,
     approvedCount: counts.get(r.id) ?? 0,
   }));
 }
@@ -59,13 +62,13 @@ export async function fetchMyPedalsLists(userId: string): Promise<{
   ] = await Promise.all([
     supabase
       .from("pedals")
-      .select("id, name, date, max_participants, status")
+      .select("id, name, date, max_participants, status, cover_image_url")
       .eq("creator_id", userId)
       .in("status", ["scheduled", "in_progress"])
       .order("date", { ascending: true }),
     supabase
       .from("pedals")
-      .select("id, name, date, max_participants, status")
+      .select("id, name, date, max_participants, status, cover_image_url")
       .eq("creator_id", userId)
       .eq("status", "completed")
       .order("date", { ascending: false }),
@@ -81,7 +84,8 @@ export async function fetchMyPedalsLists(userId: string): Promise<{
         date,
         max_participants,
         creator_id,
-        status
+        status,
+        cover_image_url
       )
     `
       )
@@ -120,6 +124,7 @@ export async function fetchMyPedalsLists(userId: string): Promise<{
           max_participants: number | null;
           creator_id: string;
           status: string;
+          cover_image_url: string | null;
         }
       | {
           id: string;
@@ -128,6 +133,7 @@ export async function fetchMyPedalsLists(userId: string): Promise<{
           max_participants: number | null;
           creator_id: string;
           status: string;
+          cover_image_url: string | null;
         }[]
       | null;
   }[];
@@ -146,6 +152,7 @@ export async function fetchMyPedalsLists(userId: string): Promise<{
       date: p.date,
       max_participants: p.max_participants,
       status: p.status,
+      cover_image_url: p.cover_image_url ?? null,
     };
 
     if (p.status === "completed" && row.status === "approved") {

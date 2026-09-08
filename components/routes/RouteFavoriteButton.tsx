@@ -11,6 +11,8 @@ interface RouteFavoriteButtonProps {
   routeId: string;
   initialFavorited: boolean;
   size?: "sm" | "md" | "lg";
+  /** `overlay`: círculo branco sobre o mapa da listagem. */
+  variant?: "default" | "overlay";
   className?: string;
   onChange?: (favorited: boolean) => void;
 }
@@ -19,6 +21,7 @@ export function RouteFavoriteButton({
   routeId,
   initialFavorited,
   size = "md",
+  variant = "default",
   className = "",
   onChange,
 }: RouteFavoriteButtonProps) {
@@ -32,7 +35,13 @@ export function RouteFavoriteButton({
   }, [initialFavorited]);
 
   const iconSize =
-    size === "sm" ? "h-5 w-5" : size === "lg" ? "h-8 w-8" : "h-6 w-6";
+    variant === "overlay"
+      ? "h-5 w-5"
+      : size === "sm"
+        ? "h-5 w-5"
+        : size === "lg"
+          ? "h-8 w-8"
+          : "h-6 w-6";
 
   const handleClick = useCallback(
     async (e: React.MouseEvent) => {
@@ -71,9 +80,11 @@ export function RouteFavoriteButton({
       onClick={handleClick}
       aria-label={favorited ? "Remover dos favoritos" : "Salvar rota nos favoritos"}
       aria-pressed={favorited}
-      className={`inline-flex shrink-0 items-center justify-center rounded-full p-1.5 text-primary transition-transform focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50 ${
-        justToggled ? "scale-110" : "scale-100"
-      } ${className}`}
+      className={`inline-flex shrink-0 items-center justify-center rounded-full transition-transform focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50 ${
+        variant === "overlay"
+          ? "h-9 w-9 bg-white text-gray-400 shadow-md ring-1 ring-black/5 hover:text-red-500"
+          : "p-1.5 text-primary"
+      } ${justToggled ? "scale-110" : "scale-100"} ${className}`}
       style={{
         transition: "transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1)",
       }}
@@ -82,7 +93,13 @@ export function RouteFavoriteButton({
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 24 24"
         className={`${iconSize} transition-[fill,stroke] duration-200 ${
-          favorited ? "fill-primary stroke-primary" : "fill-none stroke-primary"
+          favorited
+            ? variant === "overlay"
+              ? "fill-red-500 stroke-red-500"
+              : "fill-primary stroke-primary"
+            : variant === "overlay"
+              ? "fill-none stroke-current"
+              : "fill-none stroke-primary"
         }`}
         strokeWidth={favorited ? 0 : 2}
         strokeLinecap="round"

@@ -1,23 +1,21 @@
 "use client";
 
-import { useEffect } from "react";
-import type { PedalFiltersState } from "@/lib/pedal-filters";
-import { PedalFilters } from "./PedalFilters";
+import { useEffect, type ReactNode } from "react";
 
 interface FilterModalProps {
   open: boolean;
   onClose: () => void;
-  filters: PedalFiltersState;
-  onFiltersChange: (next: PedalFiltersState) => void;
-  onClear: () => void;
+  title: string;
+  applyLabel?: string;
+  children: ReactNode;
 }
 
 export function FilterModal({
   open,
   onClose,
-  filters,
-  onFiltersChange,
-  onClear,
+  title,
+  applyLabel = "Aplicar e ver mapa",
+  children,
 }: FilterModalProps) {
   useEffect(() => {
     if (!open) return;
@@ -53,12 +51,13 @@ export function FilterModal({
         onClick={onClose}
       />
 
-      <div
-        className="relative flex max-h-[min(92dvh,720px)] w-full max-w-lg flex-col rounded-t-2xl border border-gray-200 bg-surface shadow-xl transition-transform duration-200 ease-out sm:rounded-2xl"
-      >
+      <div className="relative flex max-h-[min(92dvh,720px)] w-full max-w-lg flex-col rounded-t-2xl border border-gray-200 bg-surface shadow-xl transition-transform duration-200 ease-out sm:rounded-2xl">
         <div className="flex shrink-0 items-center justify-between border-b border-gray-100 px-4 py-3">
-          <h2 id="filter-modal-title" className="text-lg font-semibold text-foreground">
-            Filtrar pedais
+          <h2
+            id="filter-modal-title"
+            className="text-lg font-semibold text-foreground"
+          >
+            {title}
           </h2>
           <button
             type="button"
@@ -74,18 +73,16 @@ export function FilterModal({
               stroke="currentColor"
               strokeWidth={2}
             >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
-          <PedalFilters
-            value={filters}
-            onChange={onFiltersChange}
-            onClear={onClear}
-          />
-        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">{children}</div>
 
         <div className="shrink-0 border-t border-gray-100 p-4">
           <button
@@ -93,7 +90,7 @@ export function FilterModal({
             onClick={onClose}
             className="w-full rounded-xl bg-gradient-to-r from-[#1B5E20] to-[#43A047] py-3 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-95"
           >
-            Aplicar e ver mapa
+            {applyLabel}
           </button>
         </div>
       </div>

@@ -1,9 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
-import type { LayerGroup, Map as LeafletMap } from "leaflet";
+import type { LayerGroup, Map as LeafletMap, Marker } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import {
   requestUserPosition,
@@ -13,40 +11,48 @@ import { loadNearbyPedalsForView } from "@/lib/nearby-pedals";
 import type { NearbyPedal } from "./PedalMarker";
 import { FilterModal } from "@/components/filters/FilterModal";
 import { PedalFilters } from "@/components/filters/PedalFilters";
+import { MapFilterChrome } from "@/components/map/MapFilterChrome";
+import { MapZoomControls } from "@/components/map/MapZoomControls";
+import { NearbyPedalsResultsPanel } from "@/components/home/NearbyPedalsResultsPanel";
 import {
   applyPedalFilters,
   countActiveFilters,
   DEFAULT_PEDAL_FILTERS,
-  describeActiveFilters,
+  getFilterChips,
+  removeFilterChip,
   type EnrichedNearbyPedal,
   type PedalFiltersState,
 } from "@/lib/pedal-filters";
-import {
-  createMapPinIcon,
-  MAP_PIN_COLORS,
-  MAP_PIN_STYLES,
-} from "@/components/map/MapPinIcon";
+import { BIKE_ICON_SRC } from "@/components/pedals/my-pedals-icons";
 
-function createPedalPinIcon(L: typeof import("leaflet")): L.DivIcon {
-  return createMapPinIcon({
-    L,
-    className: "pedal-nearby-marker",
-    colors: MAP_PIN_COLORS.primary,
-    content: { content: "P", textColor: "#1B5E20", fontSize: 15 },
+const PIN_W = 40;
+const PIN_H = 54;
+
+function createBikeMarkerIcon(
+  L: typeof import("leaflet"),
+  selected = false
+): ReturnType<typeof L.divIcon> {
+  const width = selected ? 46 : PIN_W;
+  const height = selected ? 62 : PIN_H;
+  return L.divIcon({
+    className: "nearby-bike-marker",
+    html: `
+      <div class="nearby-bike-marker__wrap${selected ? " nearby-bike-marker__wrap--selected" : ""}">
+        <svg class="nearby-bike-marker__shape" viewBox="0 0 40 54" aria-hidden="true">
+          <path
+            d="M20 5c9.5 0 16.5 7.2 16.5 16.5 0 8-8 17-16.5 29C11.5 38.5 3.5 29.5 3.5 21.5 3.5 12.2 10.5 5 20 5Z"
+            fill="#2E7D32"
+            stroke="#ffffff"
+            stroke-width="4"
+            stroke-linejoin="round"
+          />
+        </svg>
+        <img src="${BIKE_ICON_SRC}" alt="" class="nearby-bike-marker__icon" />
+      </div>
+    `,
+    iconSize: [width, height],
+    iconAnchor: [width / 2, height - 2],
   });
-}
-
-function formatPedalWhen(iso: string): string {
-  try {
-    return new Date(iso).toLocaleString("pt-BR", {
-      day: "2-digit",
-      month: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  } catch {
-    return iso;
-  }
 }
 
 function toNearbyPedal(p: EnrichedNearbyPedal): NearbyPedal {
@@ -61,8 +67,15 @@ function toNearbyPedal(p: EnrichedNearbyPedal): NearbyPedal {
   };
 }
 
-const NearbyMapInner = () => {
-  const router = useRouter();
+interface NearbyPedalsMapProps {
+  filterModalOpen?: boolean;
+  onFilterModalOpenChange?: (open: boolean) => void;
+}
+
+const NearbyMapInner = ({
+  filterModalOpen: externalFilterOpen,
+  onFilterModalOpenChange,
+}: NearbyPedalsMapProps) => {
   const [userLocation, setUserLocation] = useState<[number, number] | null>(
     null
   );
@@ -71,13 +84,16 @@ const NearbyMapInner = () => {
   const [error, setError] = useState<string | null>(null);
   const [catalog, setCatalog] = useState<EnrichedNearbyPedal[]>([]);
   const [filters, setFilters] = useState<PedalFiltersState>(DEFAULT_PEDAL_FILTERS);
-  const [filterModalOpen, setFilterModalOpen] = useState(false);
+  const [internalFilterOpen, setInternalFilterOpen] = useState(false);
+  const [selectedPedalId, setSelectedPedalId] = useState<string | null>(null);
+
+  const filterModalOpen = externalFilterOpen ?? internalFilterOpen;
+  const setFilterModalOpen = onFilterModalOpenChange ?? setInternalFilterOpen;
 
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const headerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<LeafletMap | null>(null);
   const markersLayerRef = useRef<LayerGroup | null>(null);
-  const [headerOffset, setHeaderOffset] = useState(88);
+  const markerRefsRef = useRef<Map<string, Marker>>(new Map());
 
   useEffect(() => {
     let isMounted = true;
@@ -124,7 +140,7 @@ const NearbyMapInner = () => {
       setLoadingPedals(false);
     };
 
-    fetchPedals();
+    void fetchPedals();
 
     return () => {
       isMounted = false;
@@ -143,10 +159,14 @@ const NearbyMapInner = () => {
 
   const hasAny = pedalsForMap.length > 0;
   const activeCount = countActiveFilters(filters);
-  const activeLabels = useMemo(() => describeActiveFilters(filters), [filters]);
+  const filterChips = useMemo(() => getFilterChips(filters), [filters]);
 
   const clearFilters = useCallback(() => {
     setFilters(DEFAULT_PEDAL_FILTERS);
+  }, []);
+
+  const handleRemoveChip = useCallback((chipId: string) => {
+    setFilters((prev) => removeFilterChip(prev, chipId));
   }, []);
 
   const center = useMemo<[number, number] | null>(() => {
@@ -159,14 +179,15 @@ const NearbyMapInner = () => {
   }, [userLocation, hasAny, pedalsForMap]);
 
   useEffect(() => {
-    const el = headerRef.current;
-    if (!el) return;
-    const update = () => setHeaderOffset(el.getBoundingClientRect().height);
-    update();
-    const ro = new ResizeObserver(update);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [center, filtered.length, activeLabels.length, loadingPedals]);
+    if (filtered.length === 0) {
+      setSelectedPedalId(null);
+      return;
+    }
+    setSelectedPedalId((prev) => {
+      if (prev && filtered.some((p) => p.id === prev)) return prev;
+      return filtered[0].id;
+    });
+  }, [filtered]);
 
   useEffect(() => {
     if (!center) return;
@@ -179,12 +200,10 @@ const NearbyMapInner = () => {
     const map = L.map(containerRef.current, {
       center,
       zoom: 13,
-      scrollWheelZoom: false,
+      scrollWheelZoom: true,
       zoomControl: false,
     });
     mapRef.current = map;
-
-    L.control.zoom({ position: "topright" }).addTo(map);
 
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution:
@@ -202,6 +221,7 @@ const NearbyMapInner = () => {
       map.remove();
       mapRef.current = null;
       markersLayerRef.current = null;
+      markerRefsRef.current.clear();
     };
   }, [center]);
 
@@ -221,26 +241,59 @@ const NearbyMapInner = () => {
 
     const layer = markersLayerRef.current;
     layer.clearLayers();
-
-    const pinIcon = createPedalPinIcon(L);
+    markerRefsRef.current.clear();
 
     if (userLocation) {
       L.circleMarker(userLocation, {
         radius: 8,
         color: "#1B5E20",
-        fillColor: "#1B5E20",
-        fillOpacity: 0.7,
+        fillColor: "#43A047",
+        fillOpacity: 0.85,
+        weight: 2,
       }).addTo(layer);
     }
 
     pedalsForMap.forEach((p) => {
-      const marker = L.marker([p.start_lat, p.start_lng], { icon: pinIcon });
+      const isSelected = p.id === selectedPedalId;
+      const marker = L.marker([p.start_lat, p.start_lng], {
+        icon: createBikeMarkerIcon(L, isSelected),
+        zIndexOffset: isSelected ? 1000 : 0,
+      });
       marker.addTo(layer);
+      markerRefsRef.current.set(p.id, marker);
       marker.on("click", () => {
-        router.push(`/pedals/${p.id}`);
+        setSelectedPedalId(p.id);
+        mapRef.current?.panTo([p.start_lat, p.start_lng], {
+          animate: true,
+          duration: 0.4,
+        });
       });
     });
-  }, [userLocation, pedalsForMap, router]);
+  }, [userLocation, pedalsForMap, selectedPedalId]);
+
+  const handleLocate = useCallback(() => {
+    if (!mapRef.current || !userLocation) return;
+    mapRef.current.setView(userLocation, 14, { animate: true });
+  }, [userLocation]);
+
+  const handleZoomIn = useCallback(() => {
+    mapRef.current?.zoomIn();
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    mapRef.current?.zoomOut();
+  }, []);
+
+  const handleSelectPedal = useCallback((id: string) => {
+    setSelectedPedalId(id);
+    const pedal = filtered.find((p) => p.id === id);
+    if (pedal && mapRef.current) {
+      mapRef.current.panTo([pedal.start_lat, pedal.start_lng], {
+        animate: true,
+        duration: 0.4,
+      });
+    }
+  }, [filtered]);
 
   if (loadingLocation) {
     return (
@@ -263,151 +316,101 @@ const NearbyMapInner = () => {
   }
 
   return (
-    <div className="relative flex h-full min-h-0 flex-1 flex-col lg:flex-row">
-      <aside className="hidden w-[min(100%,20rem)] shrink-0 flex-col border-r border-gray-200 bg-surface lg:flex">
-        <div className="shrink-0 border-b border-gray-100 px-4 py-3">
-          <p className="text-sm font-semibold text-foreground">Pedais próximos</p>
-          <p className="mt-0.5 text-xs text-text-secondary">
-            Filtros aplicados no dispositivo · toque no pin no mapa
-          </p>
-        </div>
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
-          <PedalFilters
-            value={filters}
-            onChange={setFilters}
-            onClear={clearFilters}
-          />
-        </div>
-        <div className="max-h-[40%] min-h-0 shrink-0 overflow-y-auto border-t border-gray-100">
-          <p className="sticky top-0 bg-surface px-4 py-2 text-xs font-medium text-text-secondary">
-            Resultados ({filtered.length})
-          </p>
-          {!loadingPedals && filtered.length === 0 ? (
-            <p className="px-4 pb-4 text-sm text-text-secondary">
-              Nenhum pedal com os filtros selecionados.
-            </p>
-          ) : (
-            <ul className="space-y-1 px-2 pb-3">
-              {filtered.map((p) => (
-                <li key={p.id}>
-                  <Link
-                    href={`/pedals/${p.id}`}
-                    className="block rounded-lg px-2 py-2 text-sm transition-colors hover:bg-primary/5"
-                  >
-                    <span className="font-medium text-foreground">{p.name}</span>
-                    <span className="mt-0.5 block text-xs text-text-secondary">
-                      {formatPedalWhen(p.date)} · {p.computedDistanceKm.toFixed(1)}{" "}
-                      km
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </aside>
+    <MapFilterChrome
+      chips={filterChips}
+      activeCount={activeCount}
+      onRemoveChip={handleRemoveChip}
+      onOpenFilters={() => setFilterModalOpen(true)}
+      loading={loadingPedals}
+      loadingLabel="Carregando pedais"
+      desktopPanel={
+        <PedalFilters
+          variant="panel"
+          value={filters}
+          onChange={setFilters}
+          onClear={clearFilters}
+        />
+      }
+    >
+        <div ref={containerRef} className="absolute inset-0 z-0" />
 
-      <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
-        <div
-          ref={headerRef}
-          className="pointer-events-none absolute left-0 right-0 top-0 z-[500] flex flex-col gap-2 px-4 py-3"
-        >
-          <div className="pointer-events-auto rounded-xl border border-gray-200/80 bg-surface/95 px-4 py-3 shadow-md backdrop-blur-sm ring-1 ring-primary/10 transition-shadow duration-200">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-foreground">
-                  Pedais próximos
-                </p>
-                <p className="mt-0.5 text-xs text-text-secondary">
-                  {filtered.length} pedal(is)
-                </p>
-                {activeLabels.length > 0 ? (
-                  <div className="mt-2 flex flex-wrap gap-1">
-                    {activeLabels.map((label) => (
-                      <span
-                        key={label}
-                        className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary"
-                      >
-                        {label}
-                      </span>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-              <div className="flex shrink-0 items-center gap-2">
-                {loadingPedals && (
-                  <span
-                    className="mt-0.5 h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"
-                    aria-label="Carregando pedais"
-                  />
-                )}
-                <button
-                  type="button"
-                  onClick={() => setFilterModalOpen(true)}
-                  className="relative rounded-xl border border-primary/30 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary/15 lg:hidden"
-                >
-                  Filtros
-                  {activeCount > 0 ? (
-                    <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-white">
-                      {activeCount}
-                    </span>
-                  ) : null}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div ref={containerRef} className="min-h-0 w-full flex-1" />
-
-        <style>{`
-        ${MAP_PIN_STYLES}
-        .leaflet-container .leaflet-top.leaflet-right {
-          margin-top: ${headerOffset + 8}px;
-          margin-right: 12px;
+      <style>{`
+        .nearby-bike-marker {
+          background: transparent !important;
+          border: none !important;
         }
-        .leaflet-container .leaflet-control-zoom a {
-          width: 32px !important;
-          height: 32px !important;
-          line-height: 30px !important;
-          font-size: 18px !important;
-          font-weight: 600;
-          color: #1b5e20 !important;
-          border-color: rgba(27, 94, 32, 0.25) !important;
-          background: #ffffff !important;
+        .nearby-bike-marker__wrap {
+          position: relative;
+          width: 40px;
+          height: 54px;
+          filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.28));
+          transition: transform 0.2s ease, filter 0.2s ease;
         }
-        .leaflet-container .leaflet-control-zoom a:hover {
-          background: linear-gradient(to bottom, #1b5e20, #43a047) !important;
-          color: #ffffff !important;
-          border-color: transparent !important;
+        .nearby-bike-marker__wrap--selected {
+          width: 46px;
+          height: 62px;
+          filter: drop-shadow(0 4px 12px rgba(27, 94, 32, 0.45));
+        }
+        .nearby-bike-marker__shape {
+          display: block;
+          width: 100%;
+          height: 100%;
+        }
+        .nearby-bike-marker__icon {
+          position: absolute;
+          top: 11px;
+          left: 50%;
+          width: 14px;
+          height: 10px;
+          transform: translateX(-50%);
+          object-fit: contain;
+          pointer-events: none;
+          mix-blend-mode: screen;
+        }
+        .nearby-bike-marker__wrap--selected .nearby-bike-marker__icon {
+          top: 13px;
+          width: 16px;
+          height: 11px;
         }
       `}</style>
 
-        {!loadingPedals && !hasAny && (
-          <div className="pointer-events-none absolute bottom-4 left-4 right-4 z-[500] lg:left-4">
-            <p className="pointer-events-auto rounded-xl border border-gray-200/80 bg-surface/95 px-4 py-3 text-center text-sm text-text-secondary shadow-md backdrop-blur-sm">
-              Nenhum pedal encontrado com os filtros selecionados
-            </p>
-          </div>
-        )}
-        {error && (
-          <div className="absolute bottom-4 left-4 right-4 z-[500] rounded-xl border border-red-100 bg-red-50/95 px-4 py-3 shadow-md backdrop-blur-sm">
-            <p className="text-xs text-red-700">{error}</p>
-          </div>
-        )}
-      </div>
+      <MapZoomControls
+        onZoomIn={handleZoomIn}
+        onZoomOut={handleZoomOut}
+        onLocate={handleLocate}
+      />
+
+      {/* Results panel */}
+      {(hasAny || !loadingPedals) && (
+        <NearbyPedalsResultsPanel
+          pedals={filtered}
+          selectedId={selectedPedalId}
+          onSelectPedal={handleSelectPedal}
+          loading={loadingPedals}
+        />
+      )}
+
+      {error ? (
+        <div className="absolute bottom-48 left-4 right-4 z-[500] rounded-xl border border-red-100 bg-red-50/95 px-4 py-3 shadow-md backdrop-blur-sm lg:bottom-4 lg:left-auto lg:right-4 lg:max-w-xs">
+          <p className="text-xs text-red-700">{error}</p>
+        </div>
+      ) : null}
 
       <FilterModal
         open={filterModalOpen}
         onClose={() => setFilterModalOpen(false)}
-        filters={filters}
-        onFiltersChange={setFilters}
-        onClear={clearFilters}
-      />
-    </div>
+        title="Filtrar pedais"
+      >
+        <PedalFilters
+          value={filters}
+          onChange={setFilters}
+          onClear={clearFilters}
+        />
+      </FilterModal>
+    </MapFilterChrome>
   );
 };
 
-export function NearbyPedalsMap() {
-  return <NearbyMapInner />;
+export function NearbyPedalsMap(props: NearbyPedalsMapProps) {
+  return <NearbyMapInner {...props} />;
 }

@@ -8,7 +8,11 @@ import { signIn } from "@/lib/auth";
 import { getProfile, setCachedProfile } from "@/lib/profile";
 import { isProfileRegistrationComplete } from "@/lib/profile-registration";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
-import { AppLogo } from "@/components/AppLogo";
+import { AuthLayout } from "@/components/auth/AuthLayout";
+import { AuthBrand } from "@/components/auth/AuthBrand";
+import { AuthDivider } from "@/components/auth/AuthDivider";
+import { AuthField, AuthPasswordField } from "@/components/auth/AuthField";
+import { AuthPrimaryButton } from "@/components/auth/AuthPrimaryButton";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -66,88 +70,60 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 sm:p-6">
-      <div className="w-full max-w-[400px] bg-surface rounded-2xl shadow-lg shadow-black/5 p-6 sm:p-8">
-        {/* Ícone e título */}
-        <div className="flex flex-col items-center gap-3 mb-8">
-          <AppLogo priority />
-          <h1 className="text-2xl sm:text-3xl font-semibold text-foreground tracking-tight">
-            PedalConnect
-          </h1>
-          <p className="text-sm text-text-secondary">Entre na sua conta</p>
-        </div>
+    <AuthLayout>
+      <AuthBrand subtitle="Entre na sua conta" priority />
 
-        <div className="flex flex-col gap-4 mb-2">
-          <GoogleSignInButton disabled={loading} />
-          <div className="relative flex items-center justify-center">
-            <span className="absolute inset-x-0 top-1/2 h-px bg-gray-200" aria-hidden />
-            <span className="relative bg-surface px-3 text-xs text-text-secondary uppercase tracking-wide">
-              ou
-            </span>
-          </div>
-        </div>
+      <div className="mb-6 flex flex-col gap-4">
+        <GoogleSignInButton disabled={loading} />
+        <AuthDivider />
+      </div>
 
-        <form onSubmit={handleLogin} className="flex flex-col gap-5">
-          <div>
-            <label htmlFor="email" className="sr-only">
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              placeholder="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              autoComplete="email"
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-surface text-foreground placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-shadow text-base"
-            />
-          </div>
+      <form onSubmit={handleLogin} className="flex flex-col gap-5">
+        <AuthField
+          type="email"
+          label="E-mail"
+          placeholder="Seu e-mail"
+          value={email}
+          onChange={setEmail}
+          autoComplete="email"
+          required
+          disabled={loading}
+        />
 
-          <div>
-            <label htmlFor="password" className="sr-only">
-              Senha
-            </label>
-            <input
-              id="password"
-              type="password"
-              placeholder="Senha"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              autoComplete="current-password"
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-surface text-foreground placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-shadow text-base"
-            />
-          </div>
-
+        <div className="flex flex-col gap-2">
+          <AuthPasswordField
+            label="Senha"
+            placeholder="Sua senha"
+            value={password}
+            onChange={setPassword}
+            autoComplete="current-password"
+            required
+            disabled={loading}
+          />
           <div className="flex justify-end">
             <Link
               href="/login/forgot-password"
-              className="text-sm text-primary hover:text-secondary transition-colors"
+              className="text-sm font-medium text-primary transition-colors hover:text-secondary"
             >
               Esqueci a senha
             </Link>
           </div>
+        </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3.5 rounded-xl font-medium text-white bg-gradient-to-r from-[#1B5E20] to-[#43A047] hover:opacity-95 active:opacity-90 disabled:opacity-70 transition-opacity shadow-md shadow-primary/20"
-          >
-            {loading ? "Entrando…" : "Entrar"}
-          </button>
-        </form>
+        <AuthPrimaryButton disabled={loading}>
+          {loading ? "Entrando…" : "Entrar"}
+        </AuthPrimaryButton>
+      </form>
 
-        <p className="mt-6 text-center text-sm text-text-secondary">
-          Não tem uma conta?{" "}
-          <Link
-            href="/register"
-            className="font-medium text-primary hover:text-secondary transition-colors"
-          >
-            Registrar
-          </Link>
-        </p>
-      </div>
-    </div>
+      <p className="mt-6 text-center text-sm text-text-secondary">
+        Não tem uma conta?{" "}
+        <Link
+          href="/register"
+          className="font-semibold text-primary transition-colors hover:text-secondary"
+        >
+          Criar conta
+        </Link>
+      </p>
+    </AuthLayout>
   );
 }

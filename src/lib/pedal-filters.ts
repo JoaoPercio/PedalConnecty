@@ -37,6 +37,7 @@ export interface EnrichedNearbyPedal {
   age_group: PedalAgeGroup | null;
   visibility: PedalVisibility;
   max_participants: number | null;
+  cover_image_url: string | null;
   start_lat: number;
   start_lng: number;
   computedDistanceKm: number;
@@ -56,17 +57,73 @@ export function countActiveFilters(f: PedalFiltersState): number {
 }
 
 export function describeActiveFilters(f: PedalFiltersState): string[] {
-  const labels: string[] = [];
-  if (f.maxDistanceKm !== DEFAULT_PEDAL_FILTERS.maxDistanceKm) {
-    labels.push(`Até ${f.maxDistanceKm} km`);
+  return getFilterChips(f).map((chip) => chip.label);
+}
+
+export interface FilterChip {
+  id: string;
+  label: string;
+}
+
+const DIFFICULTY_CHIP_LABELS: Record<PedalDifficulty, string> = {
+  iniciante: "Fácil",
+  intermediario: "Moderado",
+  avancado: "Difícil",
+};
+
+const AGE_GROUP_CHIP_LABELS: Record<PedalAgeGroup, string> = {
+  todas: "Todas as idades",
+  adultos: "Adultos",
+  melhor_idade: "Melhor idade",
+};
+
+export function getFilterChips(f: PedalFiltersState): FilterChip[] {
+  const chips: FilterChip[] = [
+    { id: "distance", label: `Até ${f.maxDistanceKm} km` },
+    {
+      id: "difficulty",
+      label: f.difficulty
+        ? DIFFICULTY_CHIP_LABELS[f.difficulty]
+        : "Qualquer dificuldade",
+    },
+  ];
+
+  if (f.onlyFuture) chips.push({ id: "future", label: "Próximos" });
+  if (f.onlyWithSlots) chips.push({ id: "slots", label: "Com vagas" });
+  if (f.femaleOnly) chips.push({ id: "female", label: "Só mulheres" });
+  if (f.ageGroup) {
+    chips.push({
+      id: "age",
+      label: AGE_GROUP_CHIP_LABELS[f.ageGroup],
+    });
   }
-  if (f.difficulty) labels.push(`Dificuldade: ${f.difficulty}`);
-  if (f.femaleOnly) labels.push("Só mulheres");
-  if (f.ageGroup) labels.push(`Faixa: ${f.ageGroup}`);
-  if (!f.onlyFuture) labels.push("Inclui passados");
-  if (f.onlyWithSlots) labels.push("Com vagas");
-  if (f.terrain) labels.push(`Terreno: ${f.terrain}`);
-  return labels;
+  if (f.terrain) chips.push({ id: "terrain", label: `Terreno: ${f.terrain}` });
+
+  return chips;
+}
+
+export function removeFilterChip(
+  f: PedalFiltersState,
+  chipId: string
+): PedalFiltersState {
+  switch (chipId) {
+    case "distance":
+      return { ...f, maxDistanceKm: DEFAULT_PEDAL_FILTERS.maxDistanceKm };
+    case "difficulty":
+      return { ...f, difficulty: "" };
+    case "future":
+      return { ...f, onlyFuture: false };
+    case "slots":
+      return { ...f, onlyWithSlots: false };
+    case "female":
+      return { ...f, femaleOnly: false };
+    case "age":
+      return { ...f, ageGroup: "" };
+    case "terrain":
+      return { ...f, terrain: "" };
+    default:
+      return f;
+  }
 }
 
 export function applyPedalFilters(

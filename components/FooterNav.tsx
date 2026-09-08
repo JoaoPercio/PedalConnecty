@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { BikeIcon } from "@/components/pedals/my-pedals-icons";
 
-function MeusPedaisIcon({ className }: { className?: string }) {
+function MapIcon({ className }: { className?: string }) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -16,28 +17,8 @@ function MeusPedaisIcon({ className }: { className?: string }) {
       className={className}
       aria-hidden
     >
-      <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
-    </svg>
-  );
-}
-
-function PedaisPertosIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-      aria-hidden
-    >
-      <circle cx="5.5" cy="17.5" r="3.5" />
-      <circle cx="18.5" cy="17.5" r="3.5" />
-      <path d="M9 17.5h6M15 14l-3-5 2-4" />
-      <path d="M9 14l3-5" />
+      <path d="M9 18 4.5 20.5 2 19V6l3-1.5L9 7l6-3 4.5 2L22 6v13l-3 1.5L15 18l-6 3Z" />
+      <path d="M9 7v11M15 4v14" />
     </svg>
   );
 }
@@ -106,75 +87,86 @@ function MapAlertsIcon({ className }: { className?: string }) {
   );
 }
 
-const linkClass = (active: boolean) =>
-  `flex flex-col items-center gap-1 rounded-lg px-4 py-2 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/30 ${
+const NAV_ITEMS = [
+  {
+    href: "/home",
+    label: "Pedais perto",
+    shortLabel: "Perto",
+    match: (p: string) => p === "/home",
+    Icon: MapIcon,
+  },
+  {
+    href: "/pedals/mine",
+    label: "Meus pedais",
+    shortLabel: "Meus",
+    match: (p: string) => p === "/pedals/mine",
+    Icon: BikeIcon,
+  },
+  {
+    href: "/routes",
+    label: "Rotas",
+    shortLabel: "Rotas",
+    match: (p: string) => p.startsWith("/routes"),
+    Icon: RotasIcon,
+  },
+  {
+    href: "/map-alerts",
+    label: "Alertas",
+    shortLabel: "Alertas",
+    match: (p: string) => p === "/map-alerts",
+    Icon: MapAlertsIcon,
+  },
+  {
+    href: "/bike-shops",
+    label: "Lojas",
+    shortLabel: "Lojas",
+    match: (p: string) => p === "/bike-shops",
+    Icon: LojasIcon,
+  },
+] as const;
+
+function linkClass(active: boolean) {
+  return `relative flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-lg px-0.5 py-1.5 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/30 sm:px-3 ${
     active
       ? "text-primary"
       : "text-text-secondary hover:bg-gray-50 hover:text-foreground"
   }`;
+}
 
 export function FooterNav() {
   const pathname = usePathname();
-  const isMine = pathname === "/pedals/mine";
-  const isNearby = pathname === "/home";
-  const isRoutes = pathname.startsWith("/routes");
-  const isBikeShops = pathname === "/bike-shops";
-  const isMapAlerts = pathname === "/map-alerts";
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-[1000] flex items-center justify-around border-t border-gray-200 bg-surface py-2 shadow-[0_-2px_10px_rgba(0,0,0,0.08)]"
+      className="fixed bottom-0 left-0 right-0 z-[1000] border-t border-gray-200 bg-surface shadow-[0_-2px_10px_rgba(0,0,0,0.08)]"
       aria-label="Navegação principal"
     >
-      <Link
-        href="/pedals/mine"
-        className={linkClass(isMine)}
-        aria-label="Meus Pedais"
-        aria-current={isMine ? "page" : undefined}
-      >
-        <MeusPedaisIcon className="h-6 w-6" />
-        <span className="text-xs font-medium">Meus Pedais</span>
-      </Link>
-
-      <Link
-        href="/home"
-        className={linkClass(isNearby)}
-        aria-label="Pedais perto"
-        aria-current={isNearby ? "page" : undefined}
-      >
-        <PedaisPertosIcon className="h-6 w-6" />
-        <span className="text-xs font-medium">Pedais perto</span>
-      </Link>
-
-      <Link
-        href="/routes"
-        className={linkClass(isRoutes)}
-        aria-label="Rotas"
-        aria-current={isRoutes ? "page" : undefined}
-      >
-        <RotasIcon className="h-6 w-6" />
-        <span className="text-xs font-medium">Rotas</span>
-      </Link>
-
-      <Link
-        href="/map-alerts"
-        className={linkClass(isMapAlerts)}
-        aria-label="Alertas no mapa"
-        aria-current={isMapAlerts ? "page" : undefined}
-      >
-        <MapAlertsIcon className="h-6 w-6" />
-        <span className="text-xs font-medium">Alertas</span>
-      </Link>
-
-      <Link
-        href="/bike-shops"
-        className={linkClass(isBikeShops)}
-        aria-label="Lojas"
-        aria-current={isBikeShops ? "page" : undefined}
-      >
-        <LojasIcon className="h-6 w-6" />
-        <span className="text-xs font-medium">Lojas</span>
-      </Link>
+      <div className="mx-auto flex max-w-lg items-stretch justify-around py-1.5 sm:max-w-none">
+        {NAV_ITEMS.map(({ href, label, shortLabel, match, Icon }) => {
+          const active = match(pathname);
+          return (
+            <Link
+              key={href}
+              href={href}
+              className={linkClass(active)}
+              aria-label={label}
+              aria-current={active ? "page" : undefined}
+            >
+              {active ? (
+                <span
+                  className="absolute top-0 left-1/2 h-0.5 w-8 -translate-x-1/2 rounded-full bg-primary"
+                  aria-hidden
+                />
+              ) : null}
+              <Icon className="h-5 w-5 shrink-0 sm:h-6 sm:w-6" />
+              <span className="max-w-full whitespace-nowrap text-center text-[10px] font-medium leading-none sm:text-xs">
+                <span className="sm:hidden">{shortLabel}</span>
+                <span className="hidden sm:inline">{label}</span>
+              </span>
+            </Link>
+          );
+        })}
+      </div>
     </nav>
   );
 }

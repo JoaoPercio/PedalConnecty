@@ -36,7 +36,7 @@ interface RouteMapProps {
   startMarkerLabel?: string;
 }
 
-const START_PIN_COLOR = "#1565C0";
+const START_PIN_COLOR = "#2E7D32";
 const END_PIN_COLOR = "#C62828";
 
 function toRouteValue(
