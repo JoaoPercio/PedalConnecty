@@ -1,3 +1,4 @@
+import { reportUsabilityEvent } from "@/usability-tests";
 import { supabase } from "./supabase";
 import { uploadAvatar } from "./profile";
 import type { ProfileInsert, RegistrationFormData } from "@/types/registration";
@@ -49,6 +50,11 @@ export async function registerWithProfile(
 
   if (profileError) {
     return { error: profileError };
+  }
+
+  reportUsabilityEvent({ type: "account_registered" });
+  if (authData.session) {
+    reportUsabilityEvent({ type: "signed_in" });
   }
 
   return { error: null };

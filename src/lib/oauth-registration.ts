@@ -1,3 +1,4 @@
+import { reportUsabilityEvent } from "@/usability-tests";
 import { supabase } from "@/lib/supabase";
 import { getProfile, uploadAvatar } from "@/lib/profile";
 import type { SkillLevel, StepPersonalInfo } from "@/types/registration";
@@ -36,6 +37,10 @@ export async function completeOAuthRegistration(
 
   if (existing) {
     const { error } = await supabase.from("profiles").update(row).eq("id", userId);
+    if (!error) {
+      reportUsabilityEvent({ type: "account_registered" });
+      reportUsabilityEvent({ type: "signed_in" });
+    }
     return { error: error ?? null };
   }
 
@@ -44,6 +49,10 @@ export async function completeOAuthRegistration(
     ...row,
     completed_pedals_count: 0,
   });
+  if (!error) {
+    reportUsabilityEvent({ type: "account_registered" });
+    reportUsabilityEvent({ type: "signed_in" });
+  }
 
   return { error: error ?? null };
 }

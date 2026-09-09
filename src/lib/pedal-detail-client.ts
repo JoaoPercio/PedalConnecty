@@ -1,3 +1,4 @@
+import { reportUsabilityEvent } from "@/usability-tests";
 import { supabase } from "./supabase";
 import type {
   ApprovedParticipant,
@@ -224,6 +225,7 @@ export async function joinPedalWithInvite(
   if (!data || typeof data !== "string") {
     return { pedalId: null, error: new Error("Resposta inválida do servidor.") };
   }
+  reportUsabilityEvent({ type: "pedal_join_requested", pedalId: data });
   return { pedalId: data, error: null };
 }
 
@@ -302,6 +304,9 @@ export async function requestJoinPedal(
       .from("pedal_participants")
       .update({ status: "pending" })
       .eq("id", existing.id);
+    if (!error) {
+      reportUsabilityEvent({ type: "pedal_join_requested", pedalId });
+    }
     return { error: error ?? null };
   }
 
@@ -310,6 +315,9 @@ export async function requestJoinPedal(
     user_id: userId,
     status: "pending",
   });
+  if (!error) {
+    reportUsabilityEvent({ type: "pedal_join_requested", pedalId });
+  }
   return { error: error ?? null };
 }
 
@@ -422,6 +430,9 @@ export async function sendPedalMessage(
     user_id: userId,
     message: trimmed,
   });
+  if (!error) {
+    reportUsabilityEvent({ type: "pedal_message_sent", pedalId });
+  }
   return { error: error ?? null };
 }
 

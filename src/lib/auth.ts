@@ -1,3 +1,4 @@
+import { reportUsabilityEvent } from "@/usability-tests";
 import { supabase } from "./supabase";
 import { getAuthRedirectOrigin } from "./site-origin";
 
@@ -23,10 +24,14 @@ export async function signUp(email: string, password: string) {
 }
 
 export async function signIn(email: string, password: string) {
-  return await supabase.auth.signInWithPassword({
+  const result = await supabase.auth.signInWithPassword({
     email,
     password,
   });
+  if (!result.error && result.data.user) {
+    reportUsabilityEvent({ type: "signed_in" });
+  }
+  return result;
 }
 
 export async function signOut() {

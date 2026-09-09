@@ -23,6 +23,8 @@ import {
   type EnrichedNearbyPedal,
   type PedalFiltersState,
 } from "@/lib/pedal-filters";
+import { reportUsabilityEvent } from "@/usability-tests";
+import { shouldCompleteFilterTest } from "@/usability-tests/paths";
 import { BIKE_ICON_SRC } from "@/components/pedals/my-pedals-icons";
 
 const PIN_W = 40;
@@ -84,6 +86,7 @@ const NearbyMapInner = ({
   const [error, setError] = useState<string | null>(null);
   const [catalog, setCatalog] = useState<EnrichedNearbyPedal[]>([]);
   const [filters, setFilters] = useState<PedalFiltersState>(DEFAULT_PEDAL_FILTERS);
+  const [pedalsLoaded, setPedalsLoaded] = useState(false);
   const [internalFilterOpen, setInternalFilterOpen] = useState(false);
   const [selectedPedalId, setSelectedPedalId] = useState<string | null>(null);
 
@@ -137,6 +140,7 @@ const NearbyMapInner = ({
       }
 
       setCatalog(data);
+      setPedalsLoaded(true);
       setLoadingPedals(false);
     };
 
@@ -161,13 +165,40 @@ const NearbyMapInner = ({
   const activeCount = countActiveFilters(filters);
   const filterChips = useMemo(() => getFilterChips(filters), [filters]);
 
+  const handleFiltersChange = useCallback(
+    (next: PedalFiltersState) => {
+      setFilters(next);
+      if (shouldCompleteFilterTest(next, pedalsLoaded)) {
+        reportUsabilityEvent({
+          type: "pedal_filters_used",
+          filters: { ...next },
+          resultCount: applyPedalFilters(catalog, next).length,
+        });
+      }
+    },
+    [catalog, pedalsLoaded]
+  );
+
   const clearFilters = useCallback(() => {
     setFilters(DEFAULT_PEDAL_FILTERS);
   }, []);
 
-  const handleRemoveChip = useCallback((chipId: string) => {
-    setFilters((prev) => removeFilterChip(prev, chipId));
-  }, []);
+  const handleRemoveChip = useCallback(
+    (chipId: string) => {
+      setFilters((prev) => {
+        const next = removeFilterChip(prev, chipId);
+        if (shouldCompleteFilterTest(next, pedalsLoaded)) {
+          reportUsabilityEvent({
+            type: "pedal_filters_used",
+            filters: { ...next },
+            resultCount: applyPedalFilters(catalog, next).length,
+          });
+        }
+        return next;
+      });
+    },
+    [catalog, pedalsLoaded]
+  );
 
   const center = useMemo<[number, number] | null>(() => {
     if (userLocation) return userLocation;
@@ -327,7 +358,7 @@ const NearbyMapInner = ({
         <PedalFilters
           variant="panel"
           value={filters}
-          onChange={setFilters}
+          onChange={handleFiltersChange}
           onClear={clearFilters}
         />
       }
@@ -403,7 +434,7 @@ const NearbyMapInner = ({
       >
         <PedalFilters
           value={filters}
-          onChange={setFilters}
+          onChange={handleFiltersChange}
           onClear={clearFilters}
         />
       </FilterModal>

@@ -11,6 +11,13 @@ import {
   type NotificationRow,
 } from "@/lib/notifications";
 import { NotificationList } from "./NotificationList";
+import { reportUsabilityEvent } from "@/usability-tests";
+import {
+  ensureDemoNotificationInList,
+  isDemoNotificationId,
+  shouldInjectDemoNotification,
+  subscribeUsabilityCurrentTestNumber,
+} from "@/usability-tests/demo-notification";
 
 function BellIcon({ className }: { className?: string }) {
   return (
@@ -39,8 +46,21 @@ export function NotificationBell() {
   const [unread, setUnread] = useState(0);
   const [loadingList, setLoadingList] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [demoActive, setDemoActive] = useState(shouldInjectDemoNotification);
+  const [demoUnread, setDemoUnread] = useState(false);
 
   const wrapRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const sync = () => {
+      const active = shouldInjectDemoNotification();
+      setDemoActive(active);
+      if (active) setDemoUnread(true);
+      else setDemoUnread(false);
+    };
+    sync();
+    return subscribeUsabilityCurrentTestNumber(sync);
+  }, []);
 
   const refreshUnread = useCallback(async () => {
     if (!userId) return;
@@ -53,7 +73,20 @@ export function NotificationBell() {
     setLoadingList(true);
     const { rows, error } = await fetchNotificationsForUser(userId);
     setLoadingList(false);
-    if (!error) setItems(rows);
+    if (error) return;
+
+    const withDemo = ensureDemoNotificationInList(userId, rows);
+    setItems(withDemo);
+
+    if (withDemo.length > 0) {
+      reportUsabilityEvent({
+        type: "notification_viewed",
+        notificationId: withDemo[0]?.id,
+      });
+      if (withDemo.some((n) => isDemoNotificationId(n.id))) {
+        setDemoUnread(false);
+      }
+    }
   }, [userId]);
 
   useEffect(() => {
@@ -109,11 +142,19 @@ export function NotificationBell() {
       await markAllNotificationsRead(userId);
       setItems((prev) => prev.map((n) => ({ ...n, is_read: true })));
       setUnread(0);
+      setDemoUnread(false);
     }
   };
 
   const handleDelete = async (id: string) => {
     if (!userId) return;
+
+    if (isDemoNotificationId(id)) {
+      setItems((prev) => prev.filter((x) => x.id !== id));
+      setDemoUnread(false);
+      return;
+    }
+
     setDeletingId(id);
     const wasUnread = items.find((x) => x.id === id)?.is_read === false;
     const { error } = await deleteNotification(userId, id);
@@ -123,6 +164,8 @@ export function NotificationBell() {
       if (wasUnread) setUnread((c) => Math.max(0, c - 1));
     }
   };
+
+  const badgeCount = unread + (demoActive && demoUnread ? 1 : 0);
 
   if (!userId) {
     return (
@@ -148,9 +191,9 @@ export function NotificationBell() {
         aria-haspopup="true"
       >
         <BellIcon className="h-6 w-6" />
-        {unread > 0 ? (
+        {badgeCount > 0 ? (
           <span className="absolute right-0.5 top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold leading-none text-white">
-            {unread > 99 ? "99+" : unread}
+            {badgeCount > 99 ? "99+" : badgeCount}
           </span>
         ) : null}
       </button>

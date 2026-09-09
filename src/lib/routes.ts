@@ -1,3 +1,4 @@
+import { reportUsabilityEvent } from "@/usability-tests";
 import { supabase } from "./supabase";
 import type { RouteMapValue } from "@/components/pedals/RouteMap";
 import {
@@ -386,6 +387,9 @@ export async function insertRouteFavorite(
     route_id: routeId,
     user_id: userId,
   });
+  if (!error) {
+    reportUsabilityEvent({ type: "route_favorited", routeId });
+  }
   return { error: error ?? null };
 }
 
@@ -450,7 +454,9 @@ export async function createRoute(
   if (error || !data) {
     return { routeId: null, error: error ?? new Error("Falha ao criar rota.") };
   }
-  return { routeId: (data as { id: string }).id, error: null };
+  const routeId = (data as { id: string }).id;
+  reportUsabilityEvent({ type: "route_created", routeId });
+  return { routeId, error: null };
 }
 
 export async function fetchFavoriteRoutesForUser(

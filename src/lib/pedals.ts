@@ -1,3 +1,4 @@
+import { reportUsabilityEvent } from "@/usability-tests";
 import { supabase } from "./supabase";
 
 const PEDAL_COVERS_BUCKET = "pedals";
@@ -145,9 +146,11 @@ export async function createPedal(
   });
 
   if (participantError) {
+    reportUsabilityEvent({ type: "pedal_created", pedalId: pedal.id });
     return { pedalId: pedal.id, error: participantError };
   }
 
+  reportUsabilityEvent({ type: "pedal_created", pedalId: pedal.id });
   return { pedalId: pedal.id, error: null };
 }
 

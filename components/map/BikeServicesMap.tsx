@@ -28,6 +28,7 @@ import {
   getCategoryFilterChips,
   removeCategoryFilterChip,
 } from "@/lib/category-filters";
+import { reportUsabilityEvent } from "@/usability-tests";
 
 const ZOOM = 12;
 
@@ -180,6 +181,13 @@ export function BikeServicesMap({
         buildBikeServicePopupHtml(place, userPos[0], userPos[1]),
         { maxWidth: 280 }
       );
+      marker.on("popupopen", () => {
+        reportUsabilityEvent({
+          type: "bike_service_viewed",
+          placeId: String(place.id),
+          placeName: place.name,
+        });
+      });
       marker.addTo(layer);
     });
   }, [visiblePlaces, userPos, icons]);
