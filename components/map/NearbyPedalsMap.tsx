@@ -25,6 +25,11 @@ import {
 } from "@/lib/pedal-filters";
 import { reportUsabilityEvent } from "@/usability-tests";
 import { shouldCompleteFilterTest } from "@/usability-tests/paths";
+import { subscribeUsabilityCurrentTestNumber } from "@/usability-tests/demo-notification";
+import {
+  ensureDemoPedalInList,
+  shouldInjectDemoPedal,
+} from "@/usability-tests/demo-pedal";
 import { BIKE_ICON_SRC } from "@/components/pedals/my-pedals-icons";
 
 const PIN_W = 40;
@@ -89,6 +94,7 @@ const NearbyMapInner = ({
   const [pedalsLoaded, setPedalsLoaded] = useState(false);
   const [internalFilterOpen, setInternalFilterOpen] = useState(false);
   const [selectedPedalId, setSelectedPedalId] = useState<string | null>(null);
+  const [demoActive, setDemoActive] = useState(shouldInjectDemoPedal);
 
   const filterModalOpen = externalFilterOpen ?? internalFilterOpen;
   const setFilterModalOpen = onFilterModalOpenChange ?? setInternalFilterOpen;
@@ -117,6 +123,12 @@ const NearbyMapInner = ({
     return () => {
       isMounted = false;
     };
+  }, []);
+
+  useEffect(() => {
+    const sync = () => setDemoActive(shouldInjectDemoPedal());
+    sync();
+    return subscribeUsabilityCurrentTestNumber(sync);
   }, []);
 
   useEffect(() => {
@@ -151,10 +163,11 @@ const NearbyMapInner = ({
     };
   }, [userLocation]);
 
-  const filtered = useMemo(
-    () => applyPedalFilters(catalog, filters),
-    [catalog, filters]
-  );
+  const filtered = useMemo(() => {
+    const base = applyPedalFilters(catalog, filters);
+    if (!demoActive || !userLocation) return base;
+    return ensureDemoPedalInList(userLocation[0], userLocation[1], base);
+  }, [catalog, filters, demoActive, userLocation]);
 
   const pedalsForMap: NearbyPedal[] = useMemo(
     () => filtered.map(toNearbyPedal),

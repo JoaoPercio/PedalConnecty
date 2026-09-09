@@ -3,8 +3,11 @@
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import {
+  deleteRoute,
   displayCreatorName,
   fetchRouteById,
   fetchUserRating,
@@ -32,11 +35,13 @@ interface RouteDetailViewProps {
 
 export function RouteDetailView({ routeId }: RouteDetailViewProps) {
   const { user } = useAuth();
+  const router = useRouter();
   const [route, setRoute] = useState<RouteWithCreator | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userRating, setUserRating] = useState<number | null>(null);
   const [favorited, setFavorited] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const load = useCallback(async (opts?: { silent?: boolean }) => {
     const silent = opts?.silent ?? false;
@@ -72,6 +77,29 @@ export function RouteDetailView({ routeId }: RouteDetailViewProps) {
   const handleRated = useCallback(() => {
     void load({ silent: true });
   }, [load]);
+
+  const handleDelete = useCallback(async () => {
+    if (!user || !route || user.id !== route.user_id || deleting) return;
+    if (
+      !window.confirm(
+        "Excluir esta rota? Comentários, avaliações e favoritos também serão removidos. Esta ação não pode ser desfeita."
+      )
+    ) {
+      return;
+    }
+
+    setDeleting(true);
+    const { error: delErr } = await deleteRoute(route.id, user.id);
+    setDeleting(false);
+
+    if (delErr) {
+      toast.error(delErr.message);
+      return;
+    }
+
+    toast.success("Rota excluída");
+    router.replace("/routes");
+  }, [user, route, deleting, router]);
 
   if (loading) {
     return (
@@ -174,6 +202,17 @@ export function RouteDetailView({ routeId }: RouteDetailViewProps) {
       />
 
       <RouteComments routeId={route.id} />
+
+      {user?.id === route.user_id ? (
+        <button
+          type="button"
+          disabled={deleting}
+          onClick={() => void handleDelete()}
+          className="w-full rounded-xl border border-red-200 bg-red-50 py-3 text-sm font-semibold text-red-800 shadow-sm transition enabled:hover:bg-red-100 disabled:opacity-50"
+        >
+          {deleting ? "Excluindo…" : "Excluir rota"}
+        </button>
+      ) : null}
     </div>
   );
 }

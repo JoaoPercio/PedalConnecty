@@ -36,7 +36,7 @@ export const usabilityTests: UsabilityTestDefinition[] = [
     id: 4,
     title: "Participação em um pedal",
     description:
-      "Escolha um pedal disponível que seja de seu interesse e solicite sua participação. Após realizar a ação, acesse novamente as informações do pedal e verifique se sua participação foi registrada corretamente.",
+      "Escolha um pedal disponível que seja de seu interesse e solicite sua participação. Após realizar a ação, acesse novamente as informações do pedal e verifique se sua participação foi registrada corretamente. Se ainda não houver pedais próximos, um pedal de demonstração será exibido para este teste.",
     objective:
       "Verificar se o usuário consegue participar de um pedal e identificar corretamente sua participação.",
   },

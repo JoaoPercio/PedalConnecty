@@ -2,8 +2,11 @@ import { notFound } from "next/navigation";
 import { Navbar } from "@/components/Navbar";
 import { FooterNav } from "@/components/FooterNav";
 import { PedalDetails } from "@/components/pedals/PedalDetails";
+import { DemoPedalDetails } from "@/components/usability-tests/DemoPedalDetails";
 import { supabase } from "@/lib/supabase";
 import type { PedalDetailRecord } from "@/types/pedal-details";
+import { isDemoPedalId } from "@/usability-tests/demo-pedal";
+import { isUsabilityTestsEnabled } from "@/usability-tests/config";
 
 interface PedalPageProps {
   params: Promise<{ id: string }>;
@@ -11,6 +14,17 @@ interface PedalPageProps {
 
 export default async function PedalDetailPage({ params }: PedalPageProps) {
   const { id } = await params;
+
+  if (isDemoPedalId(id)) {
+    if (!isUsabilityTestsEnabled()) notFound();
+    return (
+      <div className="min-h-screen bg-background pb-16">
+        <Navbar />
+        <DemoPedalDetails />
+        <FooterNav />
+      </div>
+    );
+  }
 
   const { data, error } = await supabase
     .from("pedals")

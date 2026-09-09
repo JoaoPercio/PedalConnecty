@@ -71,6 +71,7 @@ export function UsabilityTestHost() {
         if (cancelled) return;
         if (signup.completedTestNumber) {
           setState(signup.state);
+          if (signup.state.finished) setMinimized(false);
           announceCompletion(signup.state, signup.completedTestNumber);
         } else {
           setState(signup.state);
@@ -95,6 +96,7 @@ export function UsabilityTestHost() {
           const result = await service.handleEvent(userId, event);
           setState(result.state);
           if (result.completedTestNumber) {
+            if (result.state.finished) setMinimized(false);
             announceCompletion(result.state, result.completedTestNumber);
           }
         } catch (err) {
@@ -127,8 +129,9 @@ export function UsabilityTestHost() {
       toast.message("Teste registrado como não realizado.", {
         description: nextTitle
           ? `Próximo teste: ${nextTitle}.`
-          : "Você finalizou os testes de usabilidade.",
+          : "Próximo passo: responda o questionário de avaliação.",
       });
+      if (result.state.finished) setMinimized(false);
     } catch (err) {
       console.error(err);
       toast.error("Não foi possível registrar o teste.");
@@ -198,7 +201,8 @@ function announceCompletion(state: TestSessionView, completedNumber: number) {
   const done = getUsabilityTestById(completedNumber);
   if (state.finished) {
     toast.success("Testes concluídos!", {
-      description: `${state.completedCount} de 10 testes foram realizados.`,
+      description:
+        "Agora responda o questionário — ele é essencial para a pesquisa.",
     });
     return;
   }

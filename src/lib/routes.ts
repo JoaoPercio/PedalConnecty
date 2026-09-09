@@ -432,6 +432,24 @@ export interface CreateRouteInput {
   start_lng: number;
 }
 
+export async function deleteRoute(
+  routeId: string,
+  userId: string
+): Promise<{ error: Error | null }> {
+  const { data, error } = await supabase
+    .from("routes")
+    .delete()
+    .eq("id", routeId)
+    .eq("user_id", userId)
+    .select("id");
+
+  if (error) return { error };
+  if (!data || data.length === 0) {
+    return { error: new Error("Não foi possível excluir a rota.") };
+  }
+  return { error: null };
+}
+
 export async function createRoute(
   input: CreateRouteInput
 ): Promise<{ routeId: string | null; error: Error | null }> {

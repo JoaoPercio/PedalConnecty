@@ -8,6 +8,8 @@ export const ENABLE_USABILITY_TESTS =
 
 export const USABILITY_TEST_COUNT = 10;
 
+export const USABILITY_FEEDBACK_FORM_URL = "https://forms.gle/p4CdkdBTgQogEBGS9";
+
 export const PEDAL_DETAILS_VIEW_MS = 2000;
 
 /** New accounts created within this window can auto-complete Test 1 after login. */

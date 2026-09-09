@@ -1,5 +1,7 @@
 "use client";
 
+import { USABILITY_FEEDBACK_FORM_URL } from "@/usability-tests/config";
+
 interface UsabilityTestPanelProps {
   guest: boolean;
   currentNumber: number | null;
@@ -62,7 +64,7 @@ export function UsabilityTestPanel({
         </p>
         <p className="mt-0.5 text-[11px] text-text-secondary">
           {finished
-            ? `${completedCount} de ${total} realizados`
+            ? "Próximo passo: questionário"
             : `Teste ${currentNumber ?? "—"}/${total} • ${completedCount} concluídos`}
         </p>
       </button>
@@ -72,7 +74,11 @@ export function UsabilityTestPanel({
   return (
     <>
       <section
-        className={`fixed ${bottom} left-3 right-3 z-[1050] max-h-[min(48vh,28rem)] overflow-y-auto rounded-2xl border border-gray-200 bg-surface p-4 shadow-xl shadow-black/10 ring-1 ring-black/5 sm:left-4 sm:right-auto sm:w-[min(100%-2rem,26rem)]`}
+        className={`fixed ${bottom} left-3 right-3 z-[1050] overflow-y-auto rounded-2xl border border-gray-200 bg-surface p-4 shadow-xl shadow-black/10 ring-1 ring-black/5 sm:left-4 sm:right-auto sm:w-[min(100%-2rem,26rem)] ${
+          finished
+            ? "max-h-[min(70vh,36rem)]"
+            : "max-h-[min(48vh,28rem)]"
+        }`}
         aria-label="Testes de usabilidade"
       >
         <div className="flex items-start justify-between gap-3">
@@ -99,7 +105,7 @@ export function UsabilityTestPanel({
         {finished ? (
           <div className="mt-3">
             <p className="text-base font-semibold text-foreground">
-              🎉 Testes concluídos!
+              Testes concluídos!
             </p>
             <p className="mt-2 text-sm text-text-secondary">
               Você finalizou os testes de usabilidade do PedalConnect.
@@ -115,6 +121,22 @@ export function UsabilityTestPanel({
                   : "testes não foram realizados."}
               </p>
             ) : null}
+            <p className="mt-3 text-sm font-semibold text-foreground">
+              Próximo passo: o questionário
+            </p>
+            <p className="mt-1.5 text-sm leading-relaxed text-text-secondary">
+              Responder o formulário é de extrema importância para a pesquisa.
+              Sem ele, os testes não podem ser validados — sua opinião é
+              essencial para o PedalConnect.
+            </p>
+            <a
+              href={USABILITY_FEEDBACK_FORM_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-[#1B5E20] to-[#43A047] px-3 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:opacity-95 focus:outline-none focus:ring-2 focus:ring-primary/30"
+            >
+              Responder o questionário
+            </a>
             <p className="mt-3 text-sm font-medium text-primary">
               Obrigado pela participação!
             </p>

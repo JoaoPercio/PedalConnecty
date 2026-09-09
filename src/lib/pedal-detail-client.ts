@@ -1,4 +1,10 @@
 import { reportUsabilityEvent } from "@/usability-tests";
+import {
+  clearDemoPedalJoin,
+  getDemoPedalParticipation,
+  isDemoPedalId,
+  setDemoPedalJoinRequested,
+} from "@/usability-tests/demo-pedal";
 import { supabase } from "./supabase";
 import type {
   ApprovedParticipant,
@@ -111,6 +117,11 @@ export async function withdrawFromPedalBeforeStart(
   pedalId: string,
   userId: string
 ): Promise<{ error: Error | null }> {
+  if (isDemoPedalId(pedalId)) {
+    clearDemoPedalJoin(userId);
+    return { error: null };
+  }
+
   const { data: pedal, error: pedalError } = await supabase
     .from("pedals")
     .select("id, status, creator_id")
@@ -199,6 +210,10 @@ export async function fetchMyParticipation(
   pedalId: string,
   userId: string
 ): Promise<PedalParticipantRow | null> {
+  if (isDemoPedalId(pedalId)) {
+    return getDemoPedalParticipation(userId);
+  }
+
   const { data, error } = await supabase
     .from("pedal_participants")
     .select("id, pedal_id, user_id, status")
@@ -267,6 +282,12 @@ export async function requestJoinPedal(
   pedalId: string,
   userId: string
 ): Promise<{ error: Error | null }> {
+  if (isDemoPedalId(pedalId)) {
+    setDemoPedalJoinRequested(userId);
+    reportUsabilityEvent({ type: "pedal_join_requested", pedalId });
+    return { error: null };
+  }
+
   const [{ data: pedal, error: pedalError }, { data: profile, error: profileError }] =
     await Promise.all([
       supabase
@@ -324,6 +345,8 @@ export async function requestJoinPedal(
 export async function fetchApprovedParticipants(
   pedalId: string
 ): Promise<{ rows: ApprovedParticipant[]; error: Error | null }> {
+  if (isDemoPedalId(pedalId)) return { rows: [], error: null };
+
   const { data, error } = await supabase
     .from("pedal_participants")
     .select(
@@ -353,6 +376,8 @@ export async function fetchApprovedParticipants(
 export async function fetchPendingParticipants(
   pedalId: string
 ): Promise<{ rows: PendingParticipantRow[]; error: Error | null }> {
+  if (isDemoPedalId(pedalId)) return { rows: [], error: null };
+
   const { data, error } = await supabase
     .from("pedal_participants")
     .select(
@@ -394,6 +419,8 @@ export async function updateParticipantStatus(
 export async function fetchPedalMessages(
   pedalId: string
 ): Promise<{ messages: PedalMessageRow[]; error: Error | null }> {
+  if (isDemoPedalId(pedalId)) return { messages: [], error: null };
+
   const { data, error } = await supabase
     .from("pedal_messages")
     .select(
@@ -424,6 +451,9 @@ export async function sendPedalMessage(
 ): Promise<{ error: Error | null }> {
   const trimmed = message.trim();
   if (!trimmed) return { error: new Error("Mensagem vazia") };
+  if (isDemoPedalId(pedalId)) {
+    return { error: new Error("O chat não está disponível neste pedal de demonstração.") };
+  }
 
   const { error } = await supabase.from("pedal_messages").insert({
     pedal_id: pedalId,
