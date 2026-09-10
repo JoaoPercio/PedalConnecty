@@ -94,6 +94,7 @@ const NearbyMapInner = ({
   const [pedalsLoaded, setPedalsLoaded] = useState(false);
   const [internalFilterOpen, setInternalFilterOpen] = useState(false);
   const [selectedPedalId, setSelectedPedalId] = useState<string | null>(null);
+  const [listFocusNonce, setListFocusNonce] = useState(0);
   const [demoActive, setDemoActive] = useState(shouldInjectDemoPedal);
 
   const filterModalOpen = externalFilterOpen ?? internalFilterOpen;
@@ -307,6 +308,7 @@ const NearbyMapInner = ({
       markerRefsRef.current.set(p.id, marker);
       marker.on("click", () => {
         setSelectedPedalId(p.id);
+        setListFocusNonce((n) => n + 1);
         mapRef.current?.panTo([p.start_lat, p.start_lng], {
           animate: true,
           duration: 0.4,
@@ -425,14 +427,13 @@ const NearbyMapInner = ({
       />
 
       {/* Results panel */}
-      {(hasAny || !loadingPedals) && (
-        <NearbyPedalsResultsPanel
-          pedals={filtered}
-          selectedId={selectedPedalId}
-          onSelectPedal={handleSelectPedal}
-          loading={loadingPedals}
-        />
-      )}
+      <NearbyPedalsResultsPanel
+        pedals={filtered}
+        selectedId={selectedPedalId}
+        onSelectPedal={handleSelectPedal}
+        loading={loadingPedals}
+        focusNonce={listFocusNonce}
+      />
 
       {error ? (
         <div className="absolute bottom-48 left-4 right-4 z-[500] rounded-xl border border-red-100 bg-red-50/95 px-4 py-3 shadow-md backdrop-blur-sm lg:bottom-4 lg:left-auto lg:right-4 lg:max-w-xs">

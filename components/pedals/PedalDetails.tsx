@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePedalDetail } from "@/hooks/usePedalDetail";
@@ -216,6 +217,14 @@ export function PedalDetails({ initialPedal }: PedalDetailsProps) {
 
   return (
     <main className="mx-auto max-w-xl px-4 py-6">
+      <div className="mb-4 flex items-center gap-3">
+        <Link
+          href="/home"
+          className="text-sm font-medium text-primary hover:underline"
+        >
+          ← Voltar
+        </Link>
+      </div>
       <div className="flex gap-1 rounded-2xl bg-background p-1 shadow-sm ring-1 ring-gray-200/80">
         {TABS.map((t) => {
           const isActive = activeTab === t.id;

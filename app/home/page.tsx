@@ -50,7 +50,7 @@ export default function HomePage() {
       </main>
 
       <FooterNav />
-      <FloatingCreatePedalButton />
+      <FloatingCreatePedalButton hideBelowLg />
     </div>
   );
 }

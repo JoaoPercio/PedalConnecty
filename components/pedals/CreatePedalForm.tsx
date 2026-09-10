@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -289,6 +290,14 @@ export function CreatePedalForm() {
 
   return (
     <div className="mx-auto max-w-lg px-4 py-6">
+      <div className="mb-4 flex items-center gap-3">
+        <Link
+          href="/home"
+          className="text-sm font-medium text-primary hover:underline"
+        >
+          ← Voltar
+        </Link>
+      </div>
       <h1 className="mb-6 text-xl font-semibold text-foreground">
         Criar pedal
       </h1>
