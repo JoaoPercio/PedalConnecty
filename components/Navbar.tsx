@@ -67,6 +67,7 @@ export function Navbar({ onMenuClick }: NavbarProps) {
             onClick={() => setProfileModalOpen(true)}
             className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary/30"
             aria-label="Abrir perfil"
+            data-clarity-mask="true"
           >
             <AvatarImg src={avatarUrl} className="h-full w-full object-cover" />
           </button>

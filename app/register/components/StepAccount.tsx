@@ -22,7 +22,7 @@ export function StepAccount({
   disabled,
 }: StepAccountProps) {
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-5" data-clarity-mask="true">
       <div>
         <span className="block text-sm font-medium text-foreground mb-2">
           Foto de perfil (opcional)

@@ -135,7 +135,7 @@ export function PedalChatTab({ pedalId, userId, canUseChat }: PedalChatTabProps)
   }
 
   return (
-    <div className="flex h-[min(70vh,520px)] flex-col rounded-xl border border-gray-100 bg-surface shadow-sm">
+    <div className="flex h-[min(70vh,520px)] flex-col rounded-xl border border-gray-100 bg-surface shadow-sm" data-clarity-mask="true">
       {!online ? (
         <p className="border-b border-amber-100 bg-amber-50 px-3 py-2 text-center text-xs text-amber-800">
           Offline — histórico em cache; envio desactivado

@@ -51,6 +51,7 @@ export function AuthField({
           autoComplete={autoComplete}
           required={required}
           disabled={disabled}
+          data-clarity-mask="true"
           className={fieldClass}
         />
       </div>
@@ -101,6 +102,7 @@ export function AuthPasswordField({
           autoComplete={autoComplete}
           required={required}
           disabled={disabled}
+          data-clarity-mask="true"
           className={`${fieldClass} pr-11`}
         />
         <button

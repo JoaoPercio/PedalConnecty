@@ -22,6 +22,8 @@
       "@/*": ["./*"],
       "@/usability-tests": ["./src/usability-tests/index.ts"],
       "@/usability-tests/*": ["./src/usability-tests/*"],
+      "@/clarity": ["./src/clarity/index.ts"],
+      "@/clarity/*": ["./src/clarity/*"],
       "@/lib/*": ["./src/lib/*"],
       "@/types/*": ["./src/types/*"],
       "@/contexts/*": ["./src/contexts/*"],

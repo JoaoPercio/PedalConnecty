@@ -26,7 +26,10 @@ export function NotificationList({
   }
 
   return (
-    <ul className="max-h-[min(70vh,420px)] space-y-2 overflow-y-auto px-2 py-2">
+    <ul
+      className="max-h-[min(70vh,420px)] space-y-2 overflow-y-auto px-2 py-2"
+      data-clarity-mask="true"
+    >
       {items.map((n) => (
         <NotificationItem
           key={n.id}

@@ -8,6 +8,7 @@ import { SerwistRegister } from "@/components/SerwistRegister";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { PushNotificationPrompt } from "@/components/PushNotificationPrompt";
 import { UsabilityTestHost } from "@/components/usability-tests/UsabilityTestHost";
+import { ClarityHost } from "@/components/clarity/ClarityHost";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -58,6 +59,7 @@ export default function RootLayout({
             <OfflineBanner />
             <PushNotificationPrompt />
             {children}
+            <ClarityHost />
             <UsabilityTestHost />
             <Toaster position="top-center" richColors closeButton />
           </AuthProvider>

@@ -67,7 +67,7 @@ export function PedalParticipantsTab({
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8" data-clarity-mask="true">
       {isOwner && !readOnly && (
         <section className="space-y-3">
           <h3 className="text-sm font-semibold uppercase tracking-wide text-text-secondary">

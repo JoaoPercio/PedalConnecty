@@ -186,7 +186,7 @@ export default function ProfileEditPage() {
           <h1 className="text-xl font-semibold text-foreground">Editar perfil</h1>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-5" data-clarity-mask="true">
           {error && (
             <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
               {error}

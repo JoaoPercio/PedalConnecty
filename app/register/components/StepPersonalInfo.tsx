@@ -33,7 +33,7 @@ export function StepPersonalInfo({
   errors,
 }: StepPersonalInfoProps) {
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-5" data-clarity-mask="true">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
         <div>
           <label htmlFor="first_name" className="block text-sm font-medium text-foreground mb-1.5">

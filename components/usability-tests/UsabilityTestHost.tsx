@@ -19,6 +19,11 @@ import {
 import { SupabaseTestProgressRepository } from "@/usability-tests/repository";
 import { nextTestTitle, TestSessionService } from "@/usability-tests/service";
 import type { TestSessionView } from "@/usability-tests/types";
+import {
+  reportUsabilityActionToClarity,
+  reportUsabilityHandleResultToClarity,
+  syncClarityUsabilityContext,
+} from "@/clarity";
 import { UsabilityTestPanel } from "./UsabilityTestPanel";
 
 const service = new TestSessionService(new SupabaseTestProgressRepository());
@@ -40,6 +45,11 @@ export function UsabilityTestHost() {
     const next = await service.load(userId);
     setState(next);
     setUsabilityCurrentTestNumber(next.currentTestNumber);
+    syncClarityUsabilityContext({
+      userId,
+      guest: false,
+      state: next,
+    });
     return next;
   }, []);
 
@@ -69,6 +79,7 @@ export function UsabilityTestHost() {
           user.created_at
         );
         if (cancelled) return;
+        reportUsabilityHandleResultToClarity(user.id, signup);
         if (signup.completedTestNumber) {
           setState(signup.state);
           if (signup.state.finished) setMinimized(false);
@@ -93,8 +104,10 @@ export function UsabilityTestHost() {
       if (!userId) return;
       void (async () => {
         try {
+          reportUsabilityActionToClarity(event);
           const result = await service.handleEvent(userId, event);
           setState(result.state);
+          reportUsabilityHandleResultToClarity(userId, result);
           if (result.completedTestNumber) {
             if (result.state.finished) setMinimized(false);
             announceCompletion(result.state, result.completedTestNumber);
@@ -124,6 +137,11 @@ export function UsabilityTestHost() {
     try {
       const result = await service.skipCurrent(userId);
       setState(result.state);
+      syncClarityUsabilityContext({
+        userId,
+        guest: false,
+        state: result.state,
+      });
       setSkipOpen(false);
       const nextTitle = nextTestTitle(result.state);
       toast.message("Teste registrado como não realizado.", {
@@ -139,6 +157,17 @@ export function UsabilityTestHost() {
       setBusy(false);
     }
   }, []);
+
+  useEffect(() => {
+    if (!enabled || loading) return;
+    if (!user) {
+      syncClarityUsabilityContext({
+        userId: null,
+        guest: true,
+        state: null,
+      });
+    }
+  }, [enabled, loading, user]);
 
   const guestTest = useMemo(() => usabilityTests[0], []);
 

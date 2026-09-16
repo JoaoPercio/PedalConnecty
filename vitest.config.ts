@@ -10,6 +10,7 @@ export default defineConfig({
     alias: {
       "@/lib": path.resolve(__dirname, "src/lib"),
       "@/usability-tests": path.resolve(__dirname, "src/usability-tests"),
+      "@/clarity": path.resolve(__dirname, "src/clarity"),
       "@": path.resolve(__dirname),
     },
   },

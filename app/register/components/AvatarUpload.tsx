@@ -29,7 +29,7 @@ export function AvatarUpload({
   }
 
   return (
-    <div className="flex flex-col items-center gap-4">
+    <div className="flex flex-col items-center gap-4" data-clarity-mask="true">
       <div
         className={`
           w-24 h-24 rounded-full border-2 border-dashed overflow-hidden flex items-center justify-center

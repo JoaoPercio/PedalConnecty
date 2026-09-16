@@ -31,6 +31,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="profile-modal-title"
+        data-clarity-mask="true"
       >
         <h2 id="profile-modal-title" className="sr-only">
           Perfil do usuário

@@ -7,6 +7,8 @@ Módulo temporário para validação do PedalConnect. Foi isolado para poder ser
 - Código: `src/usability-tests/`
 - Interface: `components/usability-tests/`
 - Integração global: `UsabilityTestHost` em `app/layout.tsx` (layout autenticado/público, um único ponto)
+
+Observação de sessão (opcional, TCC): Microsoft Clarity — `docs/microsoft-clarity.md`. `TestSessionService` não depende do Clarity.
 - Migration: `supabase/migrations/20260907230000_user_test_progress.sql`
 
 ## Como a sessão funciona
@@ -53,6 +55,7 @@ RLS: o usuário autenticado só lê/grava as próprias linhas.
 2. Remover de vez:
    - apagar `src/usability-tests/`, `components/usability-tests/` e `docs/usability-tests.md`
    - remover `<UsabilityTestHost />` de `app/layout.tsx`
+   - remover as chamadas `@/clarity` em `UsabilityTestHost.tsx` se o Clarity ainda existir; o módulo de testes não precisa do Clarity para funcionar
    - remover as linhas `reportUsabilityEvent(...)` (e o import) em: `pedals.ts`, `pedal-detail-client.ts`, `routes.ts`, `auth.ts`, `registration.ts`, `oauth-registration.ts`, `NearbyPedalsMap.tsx`, `BikeServicesMap.tsx`, `NotificationBell.tsx`
    - remover a ramificação do pedal de demonstração em `app/pedals/[id]/page.tsx`, `pedal-detail-fetch.ts` e `pedal-detail-client.ts`
    - opcional: dropar as tabelas no Supabase
