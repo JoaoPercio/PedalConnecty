@@ -38,8 +38,7 @@ export async function completeOAuthRegistration(
   if (existing) {
     const { error } = await supabase.from("profiles").update(row).eq("id", userId);
     if (!error) {
-      reportUsabilityEvent({ type: "account_registered" });
-      reportUsabilityEvent({ type: "signed_in" });
+      reportUsabilityEvent({ type: "signup_completed" });
     }
     return { error: error ?? null };
   }
@@ -50,8 +49,7 @@ export async function completeOAuthRegistration(
     completed_pedals_count: 0,
   });
   if (!error) {
-    reportUsabilityEvent({ type: "account_registered" });
-    reportUsabilityEvent({ type: "signed_in" });
+    reportUsabilityEvent({ type: "signup_completed" });
   }
 
   return { error: error ?? null };

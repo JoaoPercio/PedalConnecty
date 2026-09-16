@@ -26,6 +26,8 @@ function eventMetadata(event: UsabilityEvent): UsabilityTestMetadata {
       return { registered: true };
     case "signed_in":
       return { signed_in: true };
+    case "signup_completed":
+      return { registered: true, signed_in: true };
     case "pedal_created":
       return { pedal_id: event.pedalId };
     case "pedal_filters_used":

@@ -1,8 +1,10 @@
 import { reportUsabilityEvent } from "@/usability-tests";
+import { markGoogleOAuthFlow } from "@/usability-tests/google-oauth-flow";
 import { supabase } from "./supabase";
 import { getAuthRedirectOrigin } from "./site-origin";
 
 export async function signInWithGoogle() {
+  markGoogleOAuthFlow();
   const origin = getAuthRedirectOrigin();
   return await supabase.auth.signInWithOAuth({
     provider: "google",

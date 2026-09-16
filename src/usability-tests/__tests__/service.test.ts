@@ -42,6 +42,13 @@ describe("TestSessionService", () => {
     expect(signed.state.completedCount).toBe(1);
   });
 
+  it("completes test 1 in one step after Google (or session) signup", async () => {
+    const { service } = createService();
+    const result = await service.handleEvent(USER, { type: "signup_completed" });
+    expect(result.completedTestNumber).toBe(1);
+    expect(result.state.currentTestNumber).toBe(2);
+  });
+
   it("does not complete test 1 from login alone", async () => {
     const { service } = createService();
     const result = await service.handleEvent(USER, { type: "signed_in" });

@@ -52,9 +52,10 @@ export async function registerWithProfile(
     return { error: profileError };
   }
 
-  reportUsabilityEvent({ type: "account_registered" });
   if (authData.session) {
-    reportUsabilityEvent({ type: "signed_in" });
+    reportUsabilityEvent({ type: "signup_completed" });
+  } else {
+    reportUsabilityEvent({ type: "account_registered" });
   }
 
   return { error: null };

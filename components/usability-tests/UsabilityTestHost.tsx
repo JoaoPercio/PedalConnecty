@@ -12,6 +12,11 @@ import {
 } from "@/usability-tests/events";
 import { setUsabilityCurrentTestNumber } from "@/usability-tests/demo-notification";
 import {
+  clearGoogleOAuthFlow,
+  peekGoogleOAuthFlow,
+  userHasGoogleIdentity,
+} from "@/usability-tests/google-oauth-flow";
+import {
   isPedalDetailsPath,
   pageHasFooterNav,
   PEDAL_DETAILS_VIEW_MS,
@@ -30,7 +35,7 @@ const service = new TestSessionService(new SupabaseTestProgressRepository());
 
 export function UsabilityTestHost() {
   const enabled = isUsabilityTestsEnabled();
-  const { user, loading } = useAuth();
+  const { user, loading, registrationComplete, profileGateLoading } = useAuth();
   const pathname = usePathname();
   const [state, setState] = useState<TestSessionView | null>(null);
   const [minimized, setMinimized] = useState(false);
@@ -74,10 +79,21 @@ export function UsabilityTestHost() {
     void (async () => {
       try {
         await loadState(user.id);
-        const signup = await service.tryCompleteSignupFromNewAccount(
-          user.id,
-          user.created_at
-        );
+        if (cancelled) return;
+        if (profileGateLoading || !registrationComplete) {
+          return;
+        }
+        const fromGoogleReturn =
+          peekGoogleOAuthFlow() && userHasGoogleIdentity(user);
+        const signup = fromGoogleReturn
+          ? await service.handleEvent(user.id, { type: "signup_completed" })
+          : await service.tryCompleteSignupFromNewAccount(
+              user.id,
+              user.created_at
+            );
+        if (fromGoogleReturn) {
+          clearGoogleOAuthFlow();
+        }
         if (cancelled) return;
         reportUsabilityHandleResultToClarity(user.id, signup);
         if (signup.completedTestNumber) {
@@ -94,16 +110,24 @@ export function UsabilityTestHost() {
     return () => {
       cancelled = true;
     };
-  }, [enabled, user?.id, user?.created_at, loadState]);
+  }, [
+    enabled,
+    user?.id,
+    user?.created_at,
+    loadState,
+    registrationComplete,
+    profileGateLoading,
+  ]);
 
   useEffect(() => {
     if (!enabled || !user?.id) return;
     userIdRef.current = user.id;
+    let chain: Promise<void> = Promise.resolve();
     return subscribeUsabilityEvents((event) => {
       const userId = userIdRef.current;
       if (!userId) return;
-      void (async () => {
-        try {
+      chain = chain
+        .then(async () => {
           reportUsabilityActionToClarity(event);
           const result = await service.handleEvent(userId, event);
           setState(result.state);
@@ -112,10 +136,10 @@ export function UsabilityTestHost() {
             if (result.state.finished) setMinimized(false);
             announceCompletion(result.state, result.completedTestNumber);
           }
-        } catch (err) {
+        })
+        .catch((err) => {
           console.error(err);
-        }
-      })();
+        });
     });
   }, [enabled, user?.id]);
 

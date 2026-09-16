@@ -20,9 +20,9 @@ export function formatPedalDateShort(iso: string): string {
 
 export function difficultyShortLabel(diff: PedalDifficulty | null): string {
   if (!diff) return "—";
-  if (diff === "iniciante") return "Fácil";
-  if (diff === "intermediario") return "Moderado";
-  if (diff === "avancado") return "Difícil";
+  if (diff === "iniciante") return "Iniciante  ";
+  if (diff === "intermediario") return "Intermendiário";
+  if (diff === "avancado") return "Avançado";
   return diff;
 }
 

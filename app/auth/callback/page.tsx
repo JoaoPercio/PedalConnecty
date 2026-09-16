@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { getProfile, setCachedProfile } from "@/lib/profile";
 import { isProfileRegistrationComplete } from "@/lib/profile-registration";
+import { reportUsabilityEvent } from "@/usability-tests";
 
 export default function AuthCallbackPage() {
   const router = useRouter();
@@ -49,6 +50,8 @@ export default function AuthCallbackPage() {
         router.replace("/register/complete");
         return;
       }
+
+      reportUsabilityEvent({ type: "signup_completed" });
 
       const fullName = profile
         ? [profile.first_name, profile.last_name].filter(Boolean).join(" ") ||

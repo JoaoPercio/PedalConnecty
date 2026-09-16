@@ -41,6 +41,7 @@ export interface UsabilityTestSessionRow {
 export type UsabilityEvent =
   | { type: "account_registered" }
   | { type: "signed_in" }
+  | { type: "signup_completed" }
   | { type: "pedal_created"; pedalId: string }
   | {
       type: "pedal_filters_used";
@@ -62,6 +63,7 @@ export type UsabilityEvent =
 export const EVENT_TEST_NUMBER: Record<UsabilityEvent["type"], number> = {
   account_registered: 1,
   signed_in: 1,
+  signup_completed: 1,
   pedal_created: 2,
   pedal_filters_used: 3,
   pedal_join_requested: 4,
