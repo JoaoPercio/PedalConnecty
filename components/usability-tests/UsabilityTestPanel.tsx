@@ -2,6 +2,24 @@
 
 import { USABILITY_FEEDBACK_FORM_URL } from "@/usability-tests/config";
 
+function ChevronUpIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden
+    >
+      <path d="m6 15 6-6 6 6" />
+    </svg>
+  );
+}
+
 interface UsabilityTestPanelProps {
   guest: boolean;
   currentNumber: number | null;
@@ -53,57 +71,71 @@ export function UsabilityTestPanel({
 
   if (minimized) {
     return (
-      <button
-        type="button"
-        onClick={onExpand}
-        className={`fixed ${bottom} left-3 z-[1050] max-w-[min(100%-5.5rem,20rem)] rounded-2xl border border-gray-200 bg-surface px-3 py-2 text-left shadow-lg shadow-black/10 ring-1 ring-black/5 transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary/30 sm:left-4`}
-        aria-label="Expandir testes de usabilidade"
+      <div
+        className={`fixed ${bottom} left-3 z-[1050] w-[min(100%-5.5rem,20rem)] rounded-2xl border border-gray-200 bg-surface p-2 shadow-lg shadow-black/10 ring-1 ring-black/5 sm:left-4`}
       >
-        <p className="text-xs font-semibold text-foreground">
-          🧪 Testes de Usabilidade
-        </p>
-        <p className="mt-0.5 text-[11px] text-text-secondary">
-          {finished
-            ? "Próximo passo: questionário"
-            : `Teste ${currentNumber ?? "—"}/${total} • ${completedCount} concluídos`}
-        </p>
-      </button>
+        <button
+          type="button"
+          onClick={onExpand}
+          className="flex w-full items-center gap-2 rounded-xl px-1 py-1 text-left transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary/30"
+          aria-expanded={false}
+          aria-label="Expandir testes de usabilidade"
+        >
+          <span className="min-w-0 flex-1">
+            <p className="text-xs font-semibold text-foreground">
+              🧪 Testes de Usabilidade
+            </p>
+            <p className="mt-0.5 text-[11px] text-text-secondary">
+              {finished
+                ? "Testes concluídos"
+                : `Teste ${currentNumber ?? "—"}/${total} • ${completedCount} concluídos`}
+            </p>
+          </span>
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <ChevronUpIcon className="h-5 w-5" />
+          </span>
+        </button>
+        <QuestionnaireLink compact />
+      </div>
     );
   }
 
   return (
     <>
       <section
-        className={`fixed ${bottom} left-3 right-3 z-[1050] overflow-y-auto rounded-2xl border border-gray-200 bg-surface p-4 shadow-xl shadow-black/10 ring-1 ring-black/5 sm:left-4 sm:right-auto sm:w-[min(100%-2rem,26rem)] ${
+        className={`fixed ${bottom} left-3 right-3 z-[1050] flex flex-col overflow-hidden rounded-2xl border border-gray-200 bg-surface shadow-xl shadow-black/10 ring-1 ring-black/5 sm:left-4 sm:right-auto sm:w-[min(100%-2rem,26rem)] ${
           finished
             ? "max-h-[min(70vh,36rem)]"
             : "max-h-[min(48vh,28rem)]"
         }`}
         aria-label="Testes de usabilidade"
       >
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-sm font-semibold text-foreground">
-              Testes de Usabilidade
-            </p>
-            {!finished && currentNumber ? (
-              <p className="mt-0.5 text-xs font-medium text-primary">
-                Teste {currentNumber} de {total}
+        <div className="shrink-0 border-b border-gray-100 bg-surface p-4 pb-3">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-foreground">
+                Testes de Usabilidade
               </p>
-            ) : null}
+              {!finished && currentNumber ? (
+                <p className="mt-0.5 text-xs font-medium text-primary">
+                  Teste {currentNumber} de {total}
+                </p>
+              ) : null}
+            </div>
+            <button
+              type="button"
+              onClick={onMinimize}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-gray-100 hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+              aria-label="Minimizar testes de usabilidade"
+            >
+              <span className="text-lg leading-none">−</span>
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={onMinimize}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-gray-100 hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-            aria-label="Minimizar testes de usabilidade"
-          >
-            <span className="text-lg leading-none">−</span>
-          </button>
         </div>
 
+        <div className="overflow-y-auto p-4 pt-3">
         {finished ? (
-          <div className="mt-3">
+          <div>
             <p className="text-base font-semibold text-foreground">
               Testes concluídos!
             </p>
@@ -129,21 +161,14 @@ export function UsabilityTestPanel({
               Sem ele, os testes não podem ser validados — sua opinião é
               essencial para o PedalConnect.
             </p>
-            <a
-              href={USABILITY_FEEDBACK_FORM_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-3 flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-[#1B5E20] to-[#43A047] px-3 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:opacity-95 focus:outline-none focus:ring-2 focus:ring-primary/30"
-            >
-              Responder o questionário
-            </a>
             <p className="mt-3 text-sm font-medium text-primary">
               Obrigado pela participação!
             </p>
+            <QuestionnaireLink />
           </div>
         ) : (
           <>
-            <h2 className="mt-3 text-sm font-semibold text-foreground">
+            <h2 className="text-sm font-semibold text-foreground">
               {title}
             </h2>
             <p className="mt-1.5 text-xs leading-relaxed text-text-secondary">
@@ -152,6 +177,7 @@ export function UsabilityTestPanel({
             <p className="mt-2 text-[11px] font-medium uppercase tracking-wide text-text-secondary">
               Status: {statusLabel}
             </p>
+            <QuestionnaireLink />
           </>
         )}
 
@@ -179,6 +205,7 @@ export function UsabilityTestPanel({
             Não consegui realizar
           </button>
         ) : null}
+        </div>
       </section>
 
       {skipOpen ? (
@@ -220,5 +247,20 @@ export function UsabilityTestPanel({
         </div>
       ) : null}
     </>
+  );
+}
+
+function QuestionnaireLink({ compact = false }: { compact?: boolean }) {
+  return (
+    <a
+      href={USABILITY_FEEDBACK_FORM_URL}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={`flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-[#1B5E20] to-[#43A047] font-semibold text-white shadow-sm transition hover:opacity-95 focus:outline-none focus:ring-2 focus:ring-primary/30 ${
+        compact ? "mt-2 px-2.5 py-2 text-xs" : "mt-3 px-3 py-2.5 text-sm"
+      }`}
+    >
+      Responder o questionário
+    </a>
   );
 }

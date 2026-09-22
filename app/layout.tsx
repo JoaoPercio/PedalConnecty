@@ -7,6 +7,7 @@ import { QueryProvider } from "@/contexts/QueryProvider";
 import { SerwistRegister } from "@/components/SerwistRegister";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { PushNotificationPrompt } from "@/components/PushNotificationPrompt";
+import { TestPhaseNotice } from "@/components/usability-tests/TestPhaseNotice";
 import { UsabilityTestHost } from "@/components/usability-tests/UsabilityTestHost";
 import { ClarityHost } from "@/components/clarity/ClarityHost";
 
@@ -61,6 +62,7 @@ export default function RootLayout({
             {children}
             <ClarityHost />
             <UsabilityTestHost />
+            <TestPhaseNotice />
             <Toaster position="top-center" richColors closeButton />
           </AuthProvider>
         </QueryProvider>
