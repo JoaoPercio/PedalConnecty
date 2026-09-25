@@ -490,7 +490,7 @@ function QuestionnaireLink({ compact = false }: { compact?: boolean }) {
       target="_blank"
       rel="noopener noreferrer"
       className={`flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-[#1B5E20] to-[#43A047] font-semibold text-white shadow-sm transition hover:opacity-95 focus:outline-none focus:ring-2 focus:ring-primary/30 ${
-        compact ? "mt-2 px-2.5 py-2 text-xs" : "mt-3 px-3 py-2.5 text-xs"
+        compact ? "px-1.5 py-2 text-[11px]" : "mt-3 px-3 py-2.5 text-xs"
       }`}
     >
       Responder questionário
