@@ -338,14 +338,25 @@ export function UsabilityTestPanel({
               </div>
             </div>
             <button
-              type="button"
-              data-no-drag
-              onClick={onMinimize}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-gray-100 hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-              aria-label="Minimizar testes de usabilidade"
-            >
-              <span className="text-lg leading-none">−</span>
-            </button>
+                type="button"
+                data-no-drag
+                onClick={onMinimize}
+                className="
+                  flex h-10 shrink-0 items-center gap-2
+                  rounded-xl border border-gray-200
+                  bg-gray-50 px-3
+                  text-sm font-semibold text-text-secondary
+                  transition-all
+                  hover:bg-gray-100 hover:text-foreground
+                  active:scale-95
+                  focus:outline-none focus:ring-2 focus:ring-primary/30
+                "
+                aria-label="Minimizar testes de usabilidade"
+                title="Minimizar painel"
+              >
+                <ChevronUpIcon className="h-4 w-4 rotate-180" />
+                <span>Minimizar</span>
+              </button>
           </div>
         </div>
 
