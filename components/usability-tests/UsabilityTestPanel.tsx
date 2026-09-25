@@ -404,7 +404,23 @@ export function UsabilityTestPanel({
             <p className="mt-2 text-[11px] font-medium uppercase tracking-wide text-text-secondary">
               Status: {statusLabel}
             </p>
-            <QuestionnaireLink />
+            
+            <div className="mt-3 flex gap-2">
+              <div className="flex-1">
+                <QuestionnaireLink />
+              </div>
+            
+              {!finished && !guest ? (
+                <button
+                  type="button"
+                  onClick={onSkipClick}
+                  className="flex-1 rounded-xl border border-gray-200 bg-background px-3 py-2.5 text-sm font-medium text-text-secondary transition-colors hover:bg-gray-50 hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                >
+                  Não consegui realizar
+                </button>
+              ) : null}
+            </div>
+             
           </>
         )}
 
@@ -422,16 +438,6 @@ export function UsabilityTestPanel({
             />
           </div>
         </div>
-
-        {!finished && !guest ? (
-          <button
-            type="button"
-            onClick={onSkipClick}
-            className="mt-4 w-full rounded-xl border border-gray-200 bg-background px-3 py-2.5 text-sm font-medium text-text-secondary transition-colors hover:bg-gray-50 hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-          >
-            Não consegui realizar
-          </button>
-        ) : null}
         </div>
       </section>
 
