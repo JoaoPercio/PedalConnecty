@@ -276,7 +276,7 @@ export function UsabilityTestPanel({
         style={floating.style}
         onClickCapture={floating.onClickCapture}
         {...floating.handleProps}
-        className={`fixed ${bottom} left-3 z-[1050] w-[min(100%-5.5rem,20rem)] touch-none select-none rounded-2xl border border-gray-200 bg-surface p-2 shadow-lg shadow-black/10 ring-1 ring-black/5 sm:left-4 ${dragCursor}`}
+        className={`fixed ${bottom} left-3 z-[1050] w-[min(100%-4.5rem,15rem)] touch-none select-none rounded-2xl border border-gray-200 bg-surface p-2 shadow-lg shadow-black/10 ring-1 ring-black/5 sm:left-4 ${dragCursor}`}
       >
         <button
           type="button"
@@ -289,7 +289,7 @@ export function UsabilityTestPanel({
           <GripIcon className="h-4 w-2.5 shrink-0 text-text-secondary" />
           <span className="min-w-0 flex-1">
             <p className="text-xs font-semibold text-foreground">
-              🧪 Testes de Usabilidade
+               Testes de Usabilidade
             </p>
             <p className="mt-0.5 text-[11px] text-text-secondary">
               {finished
@@ -338,25 +338,14 @@ export function UsabilityTestPanel({
               </div>
             </div>
             <button
-                type="button"
-                data-no-drag
-                onClick={onMinimize}
-                className="
-                  flex h-10 shrink-0 items-center gap-2
-                  rounded-xl border border-gray-200
-                  bg-gray-50 px-3
-                  text-sm font-semibold text-text-secondary
-                  transition-all
-                  hover:bg-gray-100 hover:text-foreground
-                  active:scale-95
-                  focus:outline-none focus:ring-2 focus:ring-primary/30
-                "
-                aria-label="Minimizar testes de usabilidade"
-                title="Minimizar painel"
-              >
-                <ChevronUpIcon className="h-4 w-4 rotate-180" />
-                <span>Minimizar</span>
-              </button>
+              type="button"
+              data-no-drag
+              onClick={onMinimize}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-gray-100 hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+              aria-label="Minimizar testes de usabilidade"
+            >
+              <span className="text-lg leading-none">−</span>
+            </button>
           </div>
         </div>
 
@@ -404,23 +393,7 @@ export function UsabilityTestPanel({
             <p className="mt-2 text-[11px] font-medium uppercase tracking-wide text-text-secondary">
               Status: {statusLabel}
             </p>
-            
-            <div className="mt-3 flex items-center gap-2">
-              <div className="flex-[1.3]">
-                <QuestionnaireLink />
-              </div>
-            
-              {!finished && !guest ? (
-                <button
-                  type="button"
-                  onClick={onSkipClick}
-                  className="flex-1 rounded-xl border border-gray-200 bg-background px-3 h-10 text-xs font-medium text-text-secondary transition-colors hover:bg-gray-50 hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-                >
-                  Não consegui
-                </button>
-              ) : null}
-            </div>
-             
+            <QuestionnaireLink />
           </>
         )}
 
@@ -438,6 +411,16 @@ export function UsabilityTestPanel({
             />
           </div>
         </div>
+
+        {!finished && !guest ? (
+          <button
+            type="button"
+            onClick={onSkipClick}
+            className="mt-4 w-full rounded-xl border border-gray-200 bg-background px-3 py-2.5 text-sm font-medium text-text-secondary transition-colors hover:bg-gray-50 hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+          >
+            Não consegui realizar
+          </button>
+        ) : null}
         </div>
       </section>
 
@@ -490,10 +473,10 @@ function QuestionnaireLink({ compact = false }: { compact?: boolean }) {
       target="_blank"
       rel="noopener noreferrer"
       className={`flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-[#1B5E20] to-[#43A047] font-semibold text-white shadow-sm transition hover:opacity-95 focus:outline-none focus:ring-2 focus:ring-primary/30 ${
-        compact ? "px-1.5 h-10 text-[11px]" : "px-2 py-2.5 text-[11px]"
+        compact ? "mt-2 px-2.5 py-2 text-xs" : "mt-3 px-3 py-2.5 text-sm"
       }`}
     >
-      Responder questionário
+      Responder o questionário
     </a>
   );
 }
