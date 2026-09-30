@@ -276,7 +276,7 @@ export function UsabilityTestPanel({
         style={floating.style}
         onClickCapture={floating.onClickCapture}
         {...floating.handleProps}
-        className={`fixed ${bottom} left-3 z-[1050] w-[min(100%-4.5rem,15rem)] touch-none select-none rounded-2xl border border-gray-200 bg-surface p-2 shadow-lg shadow-black/10 ring-1 ring-black/5 sm:left-4 ${dragCursor}`}
+        className={`fixed ${bottom} left-3 z-[1050] w-[min(100%-4.5rem,15rem)] touch-none select-none rounded-2xl border-2 border-primary/45 bg-surface p-2 shadow-lg shadow-primary/15 ring-2 ring-primary/20 sm:left-4 ${dragCursor}`}
       >
         <button
           type="button"
@@ -311,7 +311,7 @@ export function UsabilityTestPanel({
         ref={floating.setPanelRef}
         style={floating.style}
         onClickCapture={floating.onClickCapture}
-        className={`fixed ${bottom} left-3 z-[1050] flex w-[min(calc(100vw-1.5rem),26rem)] flex-col overflow-hidden rounded-2xl border border-gray-200 bg-surface shadow-xl shadow-black/10 ring-1 ring-black/5 sm:left-4 ${
+        className={`fixed ${bottom} left-3 z-[1050] flex w-[min(calc(100vw-1.5rem),26rem)] flex-col overflow-hidden rounded-2xl border-2 border-primary/45 bg-surface shadow-xl shadow-primary/15 ring-2 ring-primary/20 sm:left-4 ${
           finished
             ? "max-h-[min(70vh,36rem)]"
             : "max-h-[min(48vh,28rem)]"
@@ -341,10 +341,13 @@ export function UsabilityTestPanel({
               type="button"
               data-no-drag
               onClick={onMinimize}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-gray-100 hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+              className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-primary/35 bg-primary/10 px-2.5 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/15 focus:outline-none focus:ring-2 focus:ring-primary/30"
               aria-label="Minimizar testes de usabilidade"
             >
-              <span className="text-lg leading-none">−</span>
+              <span className="text-base leading-none" aria-hidden>
+                −
+              </span>
+              Minimizar
             </button>
           </div>
         </div>
@@ -393,7 +396,6 @@ export function UsabilityTestPanel({
             <p className="mt-2 text-[11px] font-medium uppercase tracking-wide text-text-secondary">
               Status: {statusLabel}
             </p>
-            <QuestionnaireLink />
           </>
         )}
 
@@ -412,14 +414,19 @@ export function UsabilityTestPanel({
           </div>
         </div>
 
-        {!finished && !guest ? (
-          <button
-            type="button"
-            onClick={onSkipClick}
-            className="mt-4 w-full rounded-xl border border-gray-200 bg-background px-3 py-2.5 text-sm font-medium text-text-secondary transition-colors hover:bg-gray-50 hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-          >
-            Não consegui realizar
-          </button>
+        {!finished ? (
+          <div className="mt-4 flex items-stretch gap-2">
+            {!guest ? (
+              <button
+                type="button"
+                onClick={onSkipClick}
+                className="min-w-0 flex-1 rounded-xl border border-gray-300 bg-background px-2 py-2.5 text-center text-[11px] font-medium leading-snug text-text-secondary transition-colors hover:bg-gray-50 hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 sm:px-3 sm:text-sm"
+              >
+                Não consegui realizar
+              </button>
+            ) : null}
+            <QuestionnaireLink className="min-w-0 flex-1" compact />
+          </div>
         ) : null}
         </div>
       </section>
@@ -466,15 +473,23 @@ export function UsabilityTestPanel({
   );
 }
 
-function QuestionnaireLink({ compact = false }: { compact?: boolean }) {
+function QuestionnaireLink({
+  compact = false,
+  className = "",
+}: {
+  compact?: boolean;
+  className?: string;
+}) {
   return (
     <a
       href={USABILITY_FEEDBACK_FORM_URL}
       target="_blank"
       rel="noopener noreferrer"
-      className={`flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-[#1B5E20] to-[#43A047] font-semibold text-white shadow-sm transition hover:opacity-95 focus:outline-none focus:ring-2 focus:ring-primary/30 ${
-        compact ? "mt-2 px-2.5 py-2 text-xs" : "mt-3 px-3 py-2.5 text-sm"
-      }`}
+      className={`flex items-center justify-center rounded-xl bg-gradient-to-r from-[#1B5E20] to-[#43A047] text-center font-semibold leading-snug text-white shadow-sm transition hover:opacity-95 focus:outline-none focus:ring-2 focus:ring-primary/30 ${
+        compact
+          ? "px-2 py-2.5 text-[11px] sm:px-3 sm:text-sm"
+          : "mt-3 w-full px-3 py-2.5 text-sm"
+      } ${className}`}
     >
       Responder o questionário
     </a>
