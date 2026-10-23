@@ -39,6 +39,7 @@ export interface PedalDetailRecord {
   start_lng: number | null;
   route_geojson: RouteGeoJSON | null;
   route_waypoints?: unknown;
+  cover_image_url?: string | null;
 }
 
 export interface PedalParticipantRow {

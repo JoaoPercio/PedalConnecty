@@ -77,7 +77,7 @@ export default function EditPedalPage() {
 
   if (notFound || !pedal) {
     return (
-      <div className="min-h-screen bg-background pb-20">
+      <div className="min-h-screen bg-background pb-[calc(var(--footer-space)+1rem)]">
         <Navbar />
         <main className="px-4 py-10 text-center">
           <p className="text-text-secondary">Pedal não encontrado.</p>
@@ -96,7 +96,7 @@ export default function EditPedalPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen bg-background pb-[calc(var(--footer-space)+1rem)]">
       <Navbar />
       <EditPedalForm initial={pedal} />
       <FooterNav />

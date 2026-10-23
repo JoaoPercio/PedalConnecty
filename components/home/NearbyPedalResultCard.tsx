@@ -8,6 +8,8 @@ import {
   availableSlotsLabel,
   difficultyShortLabel,
   formatPedalDateShort,
+  pedalOccupancyBadge,
+  type PedalOccupancyBadge,
 } from "@/lib/pedal-display";
 
 function CalendarIcon({ className }: { className?: string }) {
@@ -68,40 +70,73 @@ function UsersIcon({ className }: { className?: string }) {
   );
 }
 
+function ChevronRightIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden
+    >
+      <path d="m9 18 6-6-6-6" />
+    </svg>
+  );
+}
+
+const OCCUPANCY_BADGE: Partial<Record<PedalOccupancyBadge, { label: string; className: string }>> = {
+  live: { label: "Ao vivo", className: "bg-red-500 text-white" },
+  few: { label: "Poucas vagas", className: "bg-amber-400 text-amber-950" },
+  full: { label: "Lotado", className: "bg-gray-700 text-white" },
+};
+
+export function occupancyOf(pedal: EnrichedNearbyPedal): PedalOccupancyBadge {
+  return pedalOccupancyBadge({
+    approvedCount: pedal.approved_count,
+    max_participants: pedal.max_participants,
+    status: pedal.status,
+  });
+}
+
 interface NearbyPedalResultCardProps {
   pedal: EnrichedNearbyPedal;
   selected?: boolean;
-  onSelect?: () => void;
+  /** `carousel`: card compacto do painel recolhido; `list`: lista expandida. */
+  variant?: "list" | "carousel";
 }
 
+/** Card de pedal próximo. O card inteiro abre o detalhe. */
 export function NearbyPedalResultCard({
   pedal,
   selected = false,
-  onSelect,
+  variant = "list",
 }: NearbyPedalResultCardProps) {
   const slots = availableSlotsLabel(pedal);
   const hasSlots =
     pedal.max_participants == null ||
     pedal.approved_count < pedal.max_participants;
+  const badge = OCCUPANCY_BADGE[occupancyOf(pedal)];
+  const compact = variant === "carousel";
 
   return (
-    <article
-      className={`flex items-center gap-3 rounded-2xl border bg-surface p-2.5 shadow-sm transition-all ${
+    <Link
+      href={`/pedals/${pedal.id}`}
+      aria-label={`Ver detalhes de ${pedal.name}`}
+      className={`group flex items-center gap-3 rounded-2xl bg-surface p-2.5 text-left transition-[box-shadow,transform] duration-200 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 motion-reduce:transform-none ${
         selected
-          ? "border-primary/40 ring-2 ring-primary/15"
-          : "border-gray-100 hover:border-primary/20"
+          ? "shadow-md ring-2 ring-primary/70"
+          : "shadow-sm ring-1 ring-black/5 hover:shadow-md"
       }`}
-      onClick={onSelect}
-      onKeyDown={(e) => {
-        if (onSelect && (e.key === "Enter" || e.key === " ")) {
-          e.preventDefault();
-          onSelect();
-        }
-      }}
-      role={onSelect ? "button" : undefined}
-      tabIndex={onSelect ? 0 : undefined}
     >
-      <div className="relative h-20 w-24 shrink-0 overflow-hidden rounded-xl bg-gradient-to-br from-primary/10 to-secondary/20">
+      <div
+        className={`relative shrink-0 overflow-hidden rounded-xl bg-gradient-to-br from-primary/10 to-secondary/20 ${
+          compact ? "h-[4.5rem] w-[4.5rem]" : "h-20 w-24"
+        }`}
+      >
         {pedal.cover_image_url ? (
           <AvatarImg
             src={pedal.cover_image_url}
@@ -112,15 +147,19 @@ export function NearbyPedalResultCard({
             <BikeIcon className="h-8 w-8" />
           </div>
         )}
+        {badge ? (
+          <span
+            className={`absolute inset-x-0 bottom-0 whitespace-nowrap py-0.5 text-center text-[10px] font-bold leading-tight ${badge.className}`}
+          >
+            {badge.label}
+          </span>
+        ) : null}
       </div>
 
       <div className="min-w-0 flex-1">
-        <div className="flex items-start gap-1.5">
-          <h3 className="line-clamp-1 flex-1 text-sm font-semibold text-foreground">
-            {pedal.name}
-          </h3>
-          <BikeIcon className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-        </div>
+        <h3 className="line-clamp-1 text-sm font-semibold text-foreground">
+          {pedal.name}
+        </h3>
 
         <p className="mt-1 flex items-center gap-1.5 text-xs text-text-secondary">
           <CalendarIcon className="h-3.5 w-3.5 shrink-0" />
@@ -129,7 +168,7 @@ export function NearbyPedalResultCard({
 
         <p className="mt-0.5 flex items-center gap-1.5 text-xs text-text-secondary">
           <PinIcon className="h-3.5 w-3.5 shrink-0" />
-          <span>
+          <span className="truncate">
             {pedal.computedDistanceKm.toLocaleString("pt-BR", {
               minimumFractionDigits: 1,
               maximumFractionDigits: 1,
@@ -144,30 +183,31 @@ export function NearbyPedalResultCard({
           }`}
         >
           <UsersIcon className="h-3.5 w-3.5 shrink-0" />
-          <span>{slots}</span>
+          <span className="truncate">{slots}</span>
         </p>
       </div>
 
-      <Link
-        href={`/pedals/${pedal.id}`}
-        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-white shadow-sm transition-opacity hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-primary/30"
-        aria-label={`Ver detalhes de ${pedal.name}`}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="h-4 w-4"
-          aria-hidden
-        >
-          <path d="M5 12h14M13 6l6 6-6 6" />
-        </svg>
-      </Link>
-    </article>
+      {compact ? null : (
+        <ChevronRightIcon className="h-5 w-5 shrink-0 text-gray-300 transition-colors group-hover:text-primary" />
+      )}
+    </Link>
+  );
+}
+
+/** Placeholder animado enquanto os pedais carregam. */
+export function NearbyPedalCardSkeleton({ variant = "list" }: { variant?: "list" | "carousel" }) {
+  const compact = variant === "carousel";
+  return (
+    <div
+      className="flex animate-pulse items-center gap-3 rounded-2xl bg-surface p-2.5 shadow-sm ring-1 ring-black/5 motion-reduce:animate-none"
+      aria-hidden
+    >
+      <div className={`shrink-0 rounded-xl bg-gray-200 ${compact ? "h-[4.5rem] w-[4.5rem]" : "h-20 w-24"}`} />
+      <div className="flex-1 space-y-2">
+        <div className="h-3.5 w-3/4 rounded-full bg-gray-200" />
+        <div className="h-3 w-1/2 rounded-full bg-gray-200" />
+        <div className="h-3 w-2/3 rounded-full bg-gray-200" />
+      </div>
+    </div>
   );
 }

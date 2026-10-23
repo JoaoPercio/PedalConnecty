@@ -16,25 +16,95 @@ import {
 } from "@/lib/pedal-detail-client";
 import { SharePedalInviteButton } from "@/components/pedals/SharePedalInviteButton";
 import { isDemoPedalId } from "@/usability-tests/demo-pedal";
+import {
+  CakeIcon,
+  EyeIcon,
+  GaugeIcon,
+  InfoIcon,
+  MountainIcon,
+  PinIcon,
+  RouteIcon,
+  ShieldIcon,
+  SignalIcon,
+  TerrainIcon,
+  UsersIcon,
+} from "@/components/pedals/pedal-detail-icons";
 
 const RouteMap = dynamic(
   () => import("@/components/pedals/RouteMap").then((m) => m.RouteMap),
   { ssr: false }
 );
 
-function formatDate(date: string): string {
-  try {
-    return new Date(date).toLocaleString("pt-BR", {
-      weekday: "short",
-      day: "2-digit",
-      month: "long",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  } catch {
-    return date;
-  }
+const cardClass = "rounded-2xl bg-surface p-4 shadow-sm ring-1 ring-black/5";
+
+type IconType = (props: { className?: string }) => ReactNode;
+
+function SectionTitle({ icon: Icon, children }: { icon: IconType; children: ReactNode }) {
+  return (
+    <h3 className="flex items-center gap-2 text-base font-semibold text-foreground">
+      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+        <Icon className="h-4 w-4" />
+      </span>
+      {children}
+    </h3>
+  );
+}
+
+function StatTile({
+  icon: Icon,
+  label,
+  value,
+  unit,
+}: {
+  icon: IconType;
+  label: string;
+  value: number | null;
+  unit: string;
+}) {
+  return (
+    <div className="flex flex-col items-center gap-1 rounded-2xl bg-surface px-2 py-3 text-center shadow-sm ring-1 ring-black/5">
+      <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
+        <Icon className="h-[18px] w-[18px]" />
+      </span>
+      <p className="text-lg font-bold leading-none text-foreground">
+        {value !== null ? value.toLocaleString("pt-BR", { maximumFractionDigits: 1 }) : "—"}
+        {value !== null ? (
+          <span className="ml-0.5 text-xs font-semibold text-text-secondary">{unit}</span>
+        ) : null}
+      </p>
+      <p className="text-[11px] font-medium text-text-secondary">{label}</p>
+    </div>
+  );
+}
+
+function DetailRow({
+  icon: Icon,
+  label,
+  children,
+}: {
+  icon: IconType;
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="flex items-center gap-3 py-3">
+      <Icon className="h-5 w-5 shrink-0 text-text-secondary" />
+      <dt className="flex-1 text-sm text-text-secondary">{label}</dt>
+      <dd className="text-right text-sm font-semibold text-foreground">{children}</dd>
+    </div>
+  );
+}
+
+const DIFFICULTY_BADGE: Record<string, string> = {
+  iniciante: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+  intermediario: "bg-amber-50 text-amber-700 ring-amber-200",
+  avancado: "bg-red-50 text-red-700 ring-red-200",
+};
+
+function ageGroupLabel(a: PedalDetailRecord["age_group"]): string {
+  if (a === "adultos") return "Adultos";
+  if (a === "melhor_idade") return "Melhor idade";
+  return "Todas as idades";
 }
 
 function difficultyLabel(
@@ -261,8 +331,8 @@ export function PedalInfoTab({
 
   if (showParticipateBlock) {
     participateBlock = (
-      <section className="rounded-xl border border-gray-100 bg-surface p-4 shadow-sm">
-        <p className="text-sm font-semibold text-foreground">Participação</p>
+      <section className={cardClass}>
+        <SectionTitle icon={UsersIcon}>Participação</SectionTitle>
         {!canJoinFlow && (
           <p className="mt-2 text-sm text-text-secondary">
             {status === "completed"
@@ -408,10 +478,8 @@ export function PedalInfoTab({
 
   if (isOwner) {
     participateBlock = (
-      <section className="rounded-xl border border-primary/20 bg-primary/5 p-4 shadow-sm">
-        <p className="text-sm font-semibold text-foreground">
-          Você é o organizador
-        </p>
+      <section className="rounded-2xl bg-primary/5 p-4 ring-1 ring-primary/15">
+        <SectionTitle icon={ShieldIcon}>Você é o organizador</SectionTitle>
         <p className="mt-1 text-sm text-text-secondary">
           Gerencie solicitações na aba Participantes.
         </p>
@@ -507,68 +575,76 @@ export function PedalInfoTab({
     !isDemoPedalId(pedal.id) &&
     (isOwner || (participationLoaded && participation?.status === "approved"));
 
+  const mapsButtonClass =
+    "inline-flex min-h-11 items-center justify-center rounded-xl bg-surface px-3 text-sm font-semibold text-primary shadow-sm ring-1 ring-primary/25 transition hover:bg-primary/5 active:scale-[0.98]";
+
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-gray-100 bg-surface p-4 shadow-sm">
-        <h2 className="text-lg font-semibold text-foreground">{pedal.name}</h2>
-        {pedal.description ? (
-          <p className="mt-2 whitespace-pre-line text-sm text-text-secondary">
-            {pedal.description}
-          </p>
-        ) : null}
-        <p className="mt-3 text-sm text-foreground">{formatDate(pedal.date)}</p>
+      <div className="grid grid-cols-3 gap-2.5">
+        <StatTile icon={RouteIcon} label="Distância" value={pedal.distance_km} unit="km" />
+        <StatTile icon={MountainIcon} label="Elevação" value={pedal.elevation_gain} unit="m" />
+        <StatTile icon={GaugeIcon} label="Vel. média" value={pedal.average_speed_kmh} unit="km/h" />
       </div>
 
-      <div className="grid grid-cols-2 gap-3 rounded-xl border border-gray-100 bg-surface p-4 text-sm shadow-sm">
-        <div>
-          <p className="text-xs text-text-secondary">Distância</p>
-          <p className="font-semibold text-foreground">
-            {pedal.distance_km !== null ? `${pedal.distance_km} km` : "—"}
+      {pedal.description ? (
+        <section className={cardClass}>
+          <SectionTitle icon={InfoIcon}>Sobre o pedal</SectionTitle>
+          <p className="mt-3 whitespace-pre-line text-[15px] leading-relaxed text-text-secondary">
+            {pedal.description}
           </p>
-        </div>
-        <div>
-          <p className="text-xs text-text-secondary">Elevação</p>
-          <p className="font-semibold text-foreground">
-            {pedal.elevation_gain !== null ? `${pedal.elevation_gain} m` : "—"}
-          </p>
-        </div>
-        <div>
-          <p className="text-xs text-text-secondary">Velocidade média</p>
-          <p className="font-semibold text-foreground">
-            {pedal.average_speed_kmh !== null
-              ? `${pedal.average_speed_kmh} km/h`
-              : "—"}
-          </p>
-        </div>
-        <div>
-          <p className="text-xs text-text-secondary">Dificuldade</p>
-          <p className="font-semibold text-foreground">
-            {difficultyLabel(pedal.difficulty)}
-          </p>
-        </div>
-        <div>
-          <p className="text-xs text-text-secondary">Terreno</p>
-          <p className="font-semibold text-foreground">
+        </section>
+      ) : null}
+
+      <section className={cardClass}>
+        <SectionTitle icon={SignalIcon}>Detalhes</SectionTitle>
+        <dl className="mt-1 divide-y divide-gray-100">
+          <DetailRow icon={SignalIcon} label="Dificuldade">
+            {pedal.difficulty ? (
+              <span
+                className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ${
+                  DIFFICULTY_BADGE[pedal.difficulty] ?? "bg-gray-50 text-foreground ring-gray-200"
+                }`}
+              >
+                {difficultyLabel(pedal.difficulty)}
+              </span>
+            ) : (
+              difficultyLabel(pedal.difficulty)
+            )}
+          </DetailRow>
+          <DetailRow icon={TerrainIcon} label="Terreno">
             {terrainLabel(pedal.terrain)}
-          </p>
-        </div>
-        <div>
-          <p className="text-xs text-text-secondary">Máx. participantes</p>
-          <p className="font-semibold text-foreground">
+          </DetailRow>
+          <DetailRow icon={UsersIcon} label="Máx. participantes">
             {pedal.max_participants ?? "Sem limite"}
-          </p>
-        </div>
-        <div>
-          <p className="text-xs text-text-secondary">Visibilidade</p>
-          <p className="font-semibold text-foreground">
+          </DetailRow>
+          <DetailRow icon={CakeIcon} label="Faixa etária">
+            {ageGroupLabel(pedal.age_group)}
+          </DetailRow>
+          <DetailRow icon={EyeIcon} label="Visibilidade">
             {visibilityLabel(pedal.visibility)}
+          </DetailRow>
+        </dl>
+        <div className="border-t border-gray-100 pt-3">
+          <p className="flex items-center gap-3 text-sm text-text-secondary">
+            <ShieldIcon className="h-5 w-5 shrink-0" />
+            Equipamento obrigatório
           </p>
+          {pedal.required_equipment?.length > 0 ? (
+            <ul className="mt-2 flex flex-wrap gap-1.5 pl-8" aria-label="Equipamentos obrigatórios">
+              {pedal.required_equipment.map((item) => (
+                <li
+                  key={item}
+                  className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary"
+                >
+                  {item}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-1 pl-8 text-sm font-semibold text-foreground">{equipmentText}</p>
+          )}
         </div>
-        <div className="col-span-2">
-          <p className="text-xs text-text-secondary">Equipamento obrigatório</p>
-          <p className="font-semibold text-foreground">{equipmentText}</p>
-        </div>
-      </div>
+      </section>
 
       {canInvite ? (
         <SharePedalInviteButton pedalId={pedal.id} pedalName={pedal.name} />
@@ -577,38 +653,38 @@ export function PedalInfoTab({
       {participateBlock}
 
       {showMeetingSection && (
-        <section className="rounded-xl border border-primary/20 bg-primary/5 p-4 shadow-sm">
-          <p className="text-sm font-semibold text-foreground">Ponto de encontro</p>
+        <section className={cardClass}>
+          <SectionTitle icon={PinIcon}>Ponto de encontro</SectionTitle>
           {meetingDescription ? (
-            <p className="mt-2 whitespace-pre-line text-sm text-foreground">
+            <p className="mt-3 whitespace-pre-line text-sm text-foreground">
               {meetingDescription}
             </p>
           ) : meetingCoords ? (
-            <p className="mt-2 text-sm text-text-secondary">
+            <p className="mt-3 text-sm text-text-secondary">
               Encontro no início da rota (primeiro ponto no mapa abaixo).
             </p>
           ) : hasRoute ? (
-            <p className="mt-2 text-sm text-text-secondary">
+            <p className="mt-3 text-sm text-text-secondary">
               O trajeto no mapa abaixo começa no ponto de encontro.
             </p>
           ) : null}
           {meetingCoords ? (
-            <div className="mt-3 flex flex-wrap gap-2">
+            <div className="mt-3 grid grid-cols-2 gap-2">
               <a
                 href={`https://www.google.com/maps?q=${meetingCoords.lat},${meetingCoords.lng}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center justify-center rounded-xl border border-primary/30 bg-surface px-4 py-2.5 text-sm font-semibold text-primary shadow-sm transition hover:bg-primary/5"
+                className={mapsButtonClass}
               >
-                Abrir no Google Maps
+                Google Maps
               </a>
               <a
                 href={`https://waze.com/ul?ll=${meetingCoords.lat},${meetingCoords.lng}&navigate=yes`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center justify-center rounded-xl border border-primary/30 bg-surface px-4 py-2.5 text-sm font-semibold text-primary shadow-sm transition hover:bg-primary/5"
+                className={mapsButtonClass}
               >
-                Abrir no Waze
+                Waze
               </a>
             </div>
           ) : null}
@@ -616,24 +692,29 @@ export function PedalInfoTab({
       )}
 
       {hasRoute && routeValue && (
-        <section className="space-y-2">
-          <p className="text-sm font-semibold text-foreground">Rota do pedal</p>
-          <div className="overflow-hidden rounded-xl border border-gray-100 shadow-sm">
+        <section className={cardClass}>
+          <SectionTitle icon={RouteIcon}>Rota do pedal</SectionTitle>
+          <div className="-mx-1 mt-3 overflow-hidden rounded-xl">
             <RouteMap
               value={routeValue}
               onChange={() => {}}
               readOnly
-              height="240px"
+              height="260px"
             />
           </div>
           {routeValue.waypoints.length > 0 ? (
-            <div className="mt-2">
+            <div className="mt-3">
               <p className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
                 Paradas
               </p>
-              <ol className="mt-1.5 list-inside list-decimal space-y-1 text-sm text-foreground">
-                {routeValue.waypoints.map((w) => (
-                  <li key={w.id}>{w.name.trim() || "Parada"}</li>
+              <ol className="mt-2 space-y-1.5">
+                {routeValue.waypoints.map((w, i) => (
+                  <li key={w.id} className="flex items-center gap-2.5 text-sm text-foreground">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-100 text-xs font-bold text-amber-800">
+                      {i + 1}
+                    </span>
+                    {w.name.trim() || "Parada"}
+                  </li>
                 ))}
               </ol>
             </div>

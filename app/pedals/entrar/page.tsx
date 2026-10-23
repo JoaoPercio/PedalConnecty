@@ -55,7 +55,7 @@ export default function EntrarComConvitePage() {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="min-h-screen bg-background pb-[calc(var(--footer-space)+2rem)]">
       <Navbar />
 
       <main className="mx-auto max-w-md px-4 py-8">

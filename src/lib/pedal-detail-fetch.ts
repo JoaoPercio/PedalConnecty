@@ -6,7 +6,7 @@ import {
 } from "@/usability-tests/demo-pedal";
 
 const PEDAL_DETAIL_COLUMNS =
-  "id,creator_id,name,description,date,status,started_at,ended_at,distance_km,average_speed_kmh,elevation_gain,difficulty,terrain,max_participants,requires_safety_equipment,required_equipment,age_group,visibility,start_location,start_lat,start_lng,route_geojson,route_waypoints";
+  "id,creator_id,name,description,date,status,started_at,ended_at,distance_km,average_speed_kmh,elevation_gain,difficulty,terrain,max_participants,requires_safety_equipment,required_equipment,age_group,visibility,start_location,start_lat,start_lng,route_geojson,route_waypoints,cover_image_url";
 
 export async function fetchPedalDetail(
   pedalId: string

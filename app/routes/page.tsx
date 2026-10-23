@@ -35,7 +35,7 @@ export default function RoutesPage() {
   if (!user) return null;
 
   return (
-    <div className="flex min-h-screen flex-col bg-background pb-16">
+    <div className="flex min-h-screen flex-col bg-background pb-[var(--footer-space)]">
       <Navbar />
 
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-5 sm:px-6 lg:px-8">

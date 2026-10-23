@@ -47,7 +47,7 @@ export function PushNotificationPrompt() {
   if (!visible) return null;
 
   return (
-    <div className="fixed inset-x-4 bottom-20 z-[1900] mx-auto max-w-md rounded-2xl border border-gray-200 bg-surface p-4 shadow-xl">
+    <div className="fixed inset-x-4 bottom-[calc(var(--footer-space)+0.5rem)] z-[1900] mx-auto max-w-md rounded-2xl border border-gray-200 bg-surface p-4 shadow-xl">
       <p className="text-sm font-semibold text-foreground">
         Ativar notificações?
       </p>

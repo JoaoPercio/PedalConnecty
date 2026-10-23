@@ -108,6 +108,24 @@ export function PedalFilters({
       </div>
 
       <div>
+        <label htmlFor="filter-when" className={labelClass}>
+          Quando
+        </label>
+        <select
+          id="filter-when"
+          className={selectClass}
+          value={value.when}
+          onChange={(e) =>
+            patch({ when: e.target.value as PedalFiltersState["when"] })
+          }
+        >
+          <option value="">Qualquer data</option>
+          <option value="today">Hoje</option>
+          <option value="weekend">Fim de semana</option>
+        </select>
+      </div>
+
+      <div>
         <label htmlFor="filter-difficulty" className={labelClass}>
           Dificuldade
         </label>

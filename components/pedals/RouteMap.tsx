@@ -16,7 +16,7 @@ import {
   type RouteSegment,
 } from "@/lib/route-editor";
 import { snapRouteSegment, type RouteSnapFailure } from "@/lib/route-snap";
-import "leaflet/dist/leaflet.css";
+import { addBaseTileLayer } from "@/lib/map-tiles";
 
 export interface RouteGeoJSON {
   type: "LineString";
@@ -334,10 +334,7 @@ export function RouteMap({
       L.control.zoom({ position: "topright", zoomInTitle: "Aproximar", zoomOutTitle: "Afastar" }).addTo(map);
     }
 
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution:
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-    }).addTo(map);
+    addBaseTileLayer(L, map);
 
     const syncStartEnd = (coords: [number, number][]) => {
       if (startEndLayerRef.current && map.hasLayer(startEndLayerRef.current)) {

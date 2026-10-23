@@ -18,10 +18,32 @@ export function formatPedalDateShort(iso: string): string {
   }
 }
 
+function startOfDay(d: Date): number {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+}
+
+/**
+ * Rótulo curto para o pin do mapa: "Hoje 17:39", "Amanhã 08:00", "Sáb 17:39"
+ * (até 6 dias) ou "24/10" (mais longe).
+ */
+export function formatPinLabel(iso: string, now: Date = new Date()): string {
+  try {
+    const d = new Date(iso);
+    const time = d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    const days = Math.round((startOfDay(d) - startOfDay(now)) / 86_400_000);
+    if (days === 0) return `Hoje ${time}`;
+    if (days === 1) return `Amanhã ${time}`;
+    if (days > 1 && days < 7) return `${WEEKDAYS[d.getDay()]} ${time}`;
+    return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+  } catch {
+    return "";
+  }
+}
+
 export function difficultyShortLabel(diff: PedalDifficulty | null): string {
   if (!diff) return "—";
-  if (diff === "iniciante") return "Iniciante  ";
-  if (diff === "intermediario") return "Intermendiário";
+  if (diff === "iniciante") return "Iniciante";
+  if (diff === "intermediario") return "Intermediário";
   if (diff === "avancado") return "Avançado";
   return diff;
 }

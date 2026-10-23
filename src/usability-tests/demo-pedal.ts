@@ -157,6 +157,7 @@ export function buildDemoNearbyPedal(
       distanceKm(userLat, userLng, snap.lat, snap.lng)
     ),
     approved_count: 1,
+    status: "scheduled",
   };
 }
 
@@ -187,6 +188,7 @@ export function getDemoPedalDetail(): PedalDetailRecord {
     start_lat: snap.lat,
     start_lng: snap.lng,
     route_geojson: null,
+    cover_image_url: null,
   };
 }
 

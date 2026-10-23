@@ -10,6 +10,12 @@
   --text-secondary: #616161;
   --gradient-from: #1B5E20;
   --gradient-to: #43A047;
+
+  /* Footer flutuante (vidro): distância da borda inferior e altura da barra. */
+  --footer-nav-offset: max(0.625rem, env(safe-area-inset-bottom));
+  --footer-nav-height: 4rem;
+  /* Espaço que o conteúdo deve reservar embaixo para não ficar atrás do footer. */
+  --footer-space: calc(var(--footer-nav-height) + var(--footer-nav-offset) + 0.5rem);
 }
 
 @theme inline {

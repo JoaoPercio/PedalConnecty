@@ -1,6 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "sonner";
+// CSS do Leaflet global: importado só nos mapas (carregados sob demanda), ele era
+// descarregado ao voltar pelo histórico e o mapa ficava branco.
+import "leaflet/dist/leaflet.css";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { QueryProvider } from "@/contexts/QueryProvider";

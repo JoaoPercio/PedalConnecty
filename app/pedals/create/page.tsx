@@ -31,7 +31,7 @@ export default function CreatePedalPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-[calc(4.25rem+env(safe-area-inset-bottom))]">
+    <div className="min-h-screen bg-background pb-[var(--footer-space)]">
       <Navbar />
       <main>
         <CreatePedalForm />

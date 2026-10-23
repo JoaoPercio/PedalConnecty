@@ -39,7 +39,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="flex h-[100dvh] flex-col overflow-hidden bg-background pb-16">
+    <div className="flex h-[100dvh] flex-col overflow-hidden bg-background lg:pb-[var(--footer-space)]">
       <Navbar onMenuClick={() => setFilterModalOpen(true)} />
 
       <main className="relative min-h-0 flex-1">

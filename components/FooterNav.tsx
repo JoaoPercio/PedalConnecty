@@ -125,41 +125,63 @@ const NAV_ITEMS = [
   },
 ] as const;
 
-function linkClass(active: boolean) {
-  return `relative flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-lg px-0.5 py-1.5 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/30 sm:px-3 ${
-    active
-      ? "text-primary"
-      : "text-text-secondary hover:bg-gray-50 hover:text-foreground"
-  }`;
-}
+/** Padding interno da barra (p-1.5 = 0.375rem de cada lado). */
+const BAR_PADDING = "0.375rem";
 
+/**
+ * Barra de navegação flutuante em vidro (estilo iOS): cápsula translúcida com
+ * desfoque do conteúdo atrás e um destaque que desliza até a aba ativa.
+ */
 export function FooterNav() {
   const pathname = usePathname();
+  const activeIndex = NAV_ITEMS.findIndex((item) => item.match(pathname));
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-[1000] border-t border-gray-200 bg-surface shadow-[0_-2px_10px_rgba(0,0,0,0.08)]"
+      className="pointer-events-none fixed inset-x-0 z-[1000] px-3"
+      style={{ bottom: "var(--footer-nav-offset)" }}
       aria-label="Navegação principal"
     >
-      <div className="mx-auto flex max-w-lg items-stretch justify-around py-1.5 sm:max-w-none">
+      <div
+        className="pointer-events-auto relative mx-auto flex w-full max-w-md items-stretch rounded-[1.75rem] border border-white/60 bg-white/90 p-1.5 shadow-[0_12px_40px_-12px_rgba(15,23,42,0.35),0_2px_6px_rgba(15,23,42,0.08),inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-2xl backdrop-saturate-[1.8] supports-[backdrop-filter]:bg-white/65 sm:max-w-lg"
+        style={{ height: "var(--footer-nav-height)" }}
+      >
+        {/* Destaque da aba ativa (desliza entre as abas). */}
+        <span
+          className={`absolute rounded-[1.375rem] bg-primary/10 ring-1 ring-primary/10 transition-[transform,opacity] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none ${
+            activeIndex < 0 ? "opacity-0" : "opacity-100"
+          }`}
+          style={{
+            top: BAR_PADDING,
+            bottom: BAR_PADDING,
+            left: BAR_PADDING,
+            width: `calc((100% - 2 * ${BAR_PADDING}) / ${NAV_ITEMS.length})`,
+            transform: `translateX(${Math.max(activeIndex, 0) * 100}%)`,
+          }}
+          aria-hidden
+        />
         {NAV_ITEMS.map(({ href, label, shortLabel, match, Icon }) => {
           const active = match(pathname);
           return (
             <Link
               key={href}
               href={href}
-              className={linkClass(active)}
+              className={`relative z-10 flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-[1.375rem] px-0.5 transition-[color,transform] duration-200 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 motion-reduce:transform-none ${
+                active ? "text-primary" : "text-gray-500 hover:text-foreground"
+              }`}
               aria-label={label}
               aria-current={active ? "page" : undefined}
             >
-              {active ? (
-                <span
-                  className="absolute top-0 left-1/2 h-0.5 w-8 -translate-x-1/2 rounded-full bg-primary"
-                  aria-hidden
-                />
-              ) : null}
-              <Icon className="h-5 w-5 shrink-0 sm:h-6 sm:w-6" />
-              <span className="max-w-full whitespace-nowrap text-center text-[10px] font-medium leading-none sm:text-xs">
+              <Icon
+                className={`h-[22px] w-[22px] shrink-0 transition-transform duration-300 ${
+                  active ? "scale-110" : ""
+                }`}
+              />
+              <span
+                className={`max-w-full truncate text-center text-[10.5px] leading-none sm:text-xs ${
+                  active ? "font-bold" : "font-medium"
+                }`}
+              >
                 <span className="sm:hidden">{shortLabel}</span>
                 <span className="hidden sm:inline">{label}</span>
               </span>

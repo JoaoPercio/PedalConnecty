@@ -258,7 +258,7 @@ export function UsabilityTestPanel({
   onSkipConfirm,
 }: UsabilityTestPanelProps) {
   const bottom = hasFooter
-    ? "bottom-[calc(4.25rem+env(safe-area-inset-bottom))]"
+    ? "bottom-[calc(var(--footer-space)+0.25rem)]"
     : "bottom-4";
   const progressPct = Math.round((completedCount / total) * 100);
   const statusLabel = finished

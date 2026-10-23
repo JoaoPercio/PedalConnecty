@@ -29,7 +29,7 @@ export default function RouteDetailPage() {
   if (!user) return null;
 
   return (
-    <div className="flex min-h-screen flex-col bg-background pb-16">
+    <div className="flex min-h-screen flex-col bg-background pb-[var(--footer-space)]">
       <Navbar />
 
       <main className="mx-auto w-full max-w-lg flex-1 px-4 py-4">

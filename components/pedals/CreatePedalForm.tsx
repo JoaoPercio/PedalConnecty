@@ -589,7 +589,7 @@ export function CreatePedalForm() {
         </div>
       )}
 
-      <div className="sticky bottom-[calc(4.25rem+env(safe-area-inset-bottom))] z-[1001] -mx-4 bg-background px-4">
+      <div className="sticky bottom-[var(--footer-space)] z-[1001] -mx-4 bg-background px-4">
         <StepNavigation
           currentStep={step}
           onBack={handleBack}

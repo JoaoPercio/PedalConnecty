@@ -107,6 +107,7 @@ export async function loadNearbyPedalsForView(
       haversineDistanceKm(lat, lng, Number(p.start_lat), Number(p.start_lng))
     ),
     approved_count: counts.get(p.id) ?? 0,
+    status: p.status,
   }));
 
   return { data: enriched, error: null };

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePedalDetail } from "@/hooks/usePedalDetail";
@@ -21,6 +21,7 @@ import {
   updateParticipantStatus,
 } from "@/lib/pedal-detail-client";
 import { PedalChatTab } from "@/components/pedals/PedalChatTab";
+import { PedalDetailHero } from "@/components/pedals/PedalDetailHero";
 import { PedalInfoTab } from "@/components/pedals/PedalInfoTab";
 import { PedalParticipantsTab } from "@/components/pedals/PedalParticipantsTab";
 
@@ -38,6 +39,7 @@ interface PedalDetailsProps {
 
 export function PedalDetails({ initialPedal }: PedalDetailsProps) {
   const { user, refreshProfileCache } = useAuth();
+  const router = useRouter();
   const online = useOnlineStatus();
   const { data: pedalData } = usePedalDetail(initialPedal.id, initialPedal);
   const [activeTab, setActiveTab] = useState<TabId>("info");
@@ -215,37 +217,53 @@ export function PedalDetails({ initialPedal }: PedalDetailsProps) {
     }
   }, [user?.id, pedal.id]);
 
+  const onBack = useCallback(() => {
+    // Volta para a tela anterior (lista, mapa, meus pedais); sem histórico, vai para a home.
+    if (window.history.length > 1) router.back();
+    else router.push("/home");
+  }, [router]);
+
+  const activeTabIndex = TABS.findIndex((t) => t.id === activeTab);
+
   return (
     <main className="mx-auto max-w-xl px-4 py-6">
-      <div className="mb-4 flex items-center gap-3">
-        <Link
-          href="/home"
-          className="text-sm font-medium text-primary hover:underline"
+      <PedalDetailHero pedal={pedal} onBack={onBack} />
+
+      <div className="sticky top-14 z-[1100] -mx-4 mt-4 bg-background/80 px-4 py-2 backdrop-blur-lg supports-[backdrop-filter]:bg-background/70">
+        <div
+          className="relative flex rounded-2xl bg-gray-200/60 p-1"
+          role="tablist"
+          aria-label="Seções do pedal"
         >
-          ← Voltar
-        </Link>
-      </div>
-      <div className="flex gap-1 rounded-2xl bg-background p-1 shadow-sm ring-1 ring-gray-200/80">
-        {TABS.map((t) => {
-          const isActive = activeTab === t.id;
-          return (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => setActiveTab(t.id)}
-              className={`flex-1 rounded-xl px-2 py-2.5 text-xs font-semibold transition sm:text-sm ${
-                isActive
-                  ? "bg-surface text-primary shadow-md ring-1 ring-primary/20"
-                  : "text-text-secondary hover:text-foreground"
-              }`}
-            >
-              {t.label}
-            </button>
-          );
-        })}
+          <span
+            className="absolute bottom-1 left-1 top-1 rounded-xl bg-surface shadow-sm ring-1 ring-black/5 transition-transform duration-300 ease-out motion-reduce:transition-none"
+            style={{
+              width: `calc((100% - 0.5rem) / ${TABS.length})`,
+              transform: `translateX(${activeTabIndex * 100}%)`,
+            }}
+            aria-hidden
+          />
+          {TABS.map((t) => {
+            const isActive = activeTab === t.id;
+            return (
+              <button
+                key={t.id}
+                type="button"
+                role="tab"
+                aria-selected={isActive}
+                onClick={() => setActiveTab(t.id)}
+                className={`relative z-10 min-h-10 flex-1 rounded-xl px-2 text-sm font-semibold transition-colors ${
+                  isActive ? "text-primary" : "text-text-secondary hover:text-foreground"
+                }`}
+              >
+                {t.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      <div className="mt-6">
+      <div className="mt-4">
         {readOnly ? (
           <p className="mb-4 rounded-xl border border-amber-100 bg-amber-50 px-3 py-2 text-center text-xs text-amber-800">
             Modo offline — apenas leitura

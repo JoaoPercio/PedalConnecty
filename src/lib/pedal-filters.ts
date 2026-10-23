@@ -7,6 +7,9 @@ import type {
 
 export const DISTANCE_OPTIONS_KM = [5, 10, 15, 20, 30, 50, 100] as const;
 
+/** Quando o pedal acontece: hoje ou no próximo fim de semana (sáb/dom). */
+export type PedalWhenFilter = "" | "today" | "weekend";
+
 export interface PedalFiltersState {
   maxDistanceKm: number;
   difficulty: "" | PedalDifficulty;
@@ -15,6 +18,7 @@ export interface PedalFiltersState {
   onlyFuture: boolean;
   onlyWithSlots: boolean;
   terrain: "" | PedalTerrain;
+  when: PedalWhenFilter;
 }
 
 export const DEFAULT_PEDAL_FILTERS: PedalFiltersState = {
@@ -25,6 +29,7 @@ export const DEFAULT_PEDAL_FILTERS: PedalFiltersState = {
   onlyFuture: true,
   onlyWithSlots: false,
   terrain: "",
+  when: "",
 };
 
 export interface EnrichedNearbyPedal {
@@ -42,6 +47,8 @@ export interface EnrichedNearbyPedal {
   start_lng: number;
   computedDistanceKm: number;
   approved_count: number;
+  /** scheduled | in_progress | completed | cancelled */
+  status?: string;
 }
 
 export function countActiveFilters(f: PedalFiltersState): number {
@@ -53,6 +60,7 @@ export function countActiveFilters(f: PedalFiltersState): number {
   if (!f.onlyFuture) n++;
   if (f.onlyWithSlots) n++;
   if (f.terrain) n++;
+  if (f.when) n++;
   return n;
 }
 
@@ -77,18 +85,25 @@ const AGE_GROUP_CHIP_LABELS: Record<PedalAgeGroup, string> = {
   melhor_idade: "Melhor idade",
 };
 
-export function getFilterChips(f: PedalFiltersState): FilterChip[] {
-  const chips: FilterChip[] = [
-    { id: "distance", label: `Até ${f.maxDistanceKm} km` },
-    {
-      id: "difficulty",
-      label: f.difficulty
-        ? DIFFICULTY_CHIP_LABELS[f.difficulty]
-        : "Qualquer dificuldade",
-    },
-  ];
+const TERRAIN_CHIP_LABELS: Record<PedalTerrain, string> = {
+  asfalto: "Asfalto",
+  terra: "Terra",
+  misto: "Misto",
+  trilha: "Trilha",
+};
 
-  if (f.onlyFuture) chips.push({ id: "future", label: "Próximos" });
+/** Chips só dos filtros que fogem do padrão (os removíveis com "×"). */
+export function getFilterChips(f: PedalFiltersState): FilterChip[] {
+  const chips: FilterChip[] = [];
+  if (f.maxDistanceKm !== DEFAULT_PEDAL_FILTERS.maxDistanceKm) {
+    chips.push({ id: "distance", label: `Até ${f.maxDistanceKm} km` });
+  }
+  if (f.difficulty) {
+    chips.push({ id: "difficulty", label: DIFFICULTY_CHIP_LABELS[f.difficulty] });
+  }
+  if (f.when === "today") chips.push({ id: "when", label: "Hoje" });
+  if (f.when === "weekend") chips.push({ id: "when", label: "Fim de semana" });
+  if (!f.onlyFuture) chips.push({ id: "future", label: "Inclui passados" });
   if (f.onlyWithSlots) chips.push({ id: "slots", label: "Com vagas" });
   if (f.femaleOnly) chips.push({ id: "female", label: "Só mulheres" });
   if (f.ageGroup) {
@@ -97,7 +112,7 @@ export function getFilterChips(f: PedalFiltersState): FilterChip[] {
       label: AGE_GROUP_CHIP_LABELS[f.ageGroup],
     });
   }
-  if (f.terrain) chips.push({ id: "terrain", label: `Terreno: ${f.terrain}` });
+  if (f.terrain) chips.push({ id: "terrain", label: TERRAIN_CHIP_LABELS[f.terrain] });
 
   return chips;
 }
@@ -112,7 +127,9 @@ export function removeFilterChip(
     case "difficulty":
       return { ...f, difficulty: "" };
     case "future":
-      return { ...f, onlyFuture: false };
+      return { ...f, onlyFuture: DEFAULT_PEDAL_FILTERS.onlyFuture };
+    case "when":
+      return { ...f, when: "" };
     case "slots":
       return { ...f, onlyWithSlots: false };
     case "female":
@@ -124,6 +141,78 @@ export function removeFilterChip(
     default:
       return f;
   }
+}
+
+/** Atalhos de filtro mostrados como chips no topo do mapa. */
+export const QUICK_FILTERS: {
+  id: string;
+  label: string;
+  isActive: (f: PedalFiltersState) => boolean;
+  toggle: (f: PedalFiltersState) => PedalFiltersState;
+}[] = [
+  {
+    id: "today",
+    label: "Hoje",
+    isActive: (f) => f.when === "today",
+    toggle: (f) => ({ ...f, when: f.when === "today" ? "" : "today" }),
+  },
+  {
+    id: "weekend",
+    label: "Fim de semana",
+    isActive: (f) => f.when === "weekend",
+    toggle: (f) => ({ ...f, when: f.when === "weekend" ? "" : "weekend" }),
+  },
+  {
+    id: "slots",
+    label: "Com vagas",
+    isActive: (f) => f.onlyWithSlots,
+    toggle: (f) => ({ ...f, onlyWithSlots: !f.onlyWithSlots }),
+  },
+  {
+    id: "beginner",
+    label: "Iniciante",
+    isActive: (f) => f.difficulty === "iniciante",
+    toggle: (f) => ({ ...f, difficulty: f.difficulty === "iniciante" ? "" : "iniciante" }),
+  },
+  {
+    id: "asphalt",
+    label: "Asfalto",
+    isActive: (f) => f.terrain === "asfalto",
+    toggle: (f) => ({ ...f, terrain: f.terrain === "asfalto" ? "" : "asfalto" }),
+  },
+  {
+    id: "trail",
+    label: "Trilha",
+    isActive: (f) => f.terrain === "trilha",
+    toggle: (f) => ({ ...f, terrain: f.terrain === "trilha" ? "" : "trilha" }),
+  },
+];
+
+/** IDs de chips já representados por um atalho (não repetir como chip "×"). */
+export function chipCoveredByQuickFilter(chip: FilterChip, f: PedalFiltersState): boolean {
+  if (chip.id === "when" || chip.id === "slots") return true;
+  if (chip.id === "difficulty") return f.difficulty === "iniciante";
+  if (chip.id === "terrain") return f.terrain === "asfalto" || f.terrain === "trilha";
+  return false;
+}
+
+function matchesWhen(dateIso: string, when: PedalWhenFilter, now: Date): boolean {
+  if (!when) return true;
+  const d = new Date(dateIso);
+  const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (when === "today") {
+    const end = new Date(dayStart);
+    end.setDate(end.getDate() + 1);
+    return d >= dayStart && d < end;
+  }
+  // Próximo fim de semana (ou o atual, se hoje já for sábado/domingo).
+  const dow = dayStart.getDay();
+  const sat = new Date(dayStart);
+  if (dow === 0) sat.setDate(sat.getDate() - 1);
+  else sat.setDate(sat.getDate() + (6 - dow));
+  const mondayAfter = new Date(sat);
+  mondayAfter.setDate(mondayAfter.getDate() + 2);
+  return d >= sat && d < mondayAfter;
 }
 
 export function applyPedalFilters(
@@ -147,6 +236,7 @@ export function applyPedalFilters(
       }
     }
     if (filters.terrain && p.terrain !== filters.terrain) return false;
+    if (!matchesWhen(p.date, filters.when, now)) return false;
     return true;
   });
 }
