@@ -130,6 +130,8 @@ export function CreatePedalForm() {
     } else {
       setDistanceKm(null);
     }
+    // Traçado mudou: a elevação antiga não vale mais (recalculada ao avançar).
+    setElevationGain(null);
   }, [routeValue.coordinates]);
 
   useEffect(() => {
@@ -430,53 +432,12 @@ export function CreatePedalForm() {
 
       {step === 2 && (
         <div className="space-y-4">
-          <div className="rounded-xl border border-gray-200 bg-surface p-4 text-sm text-foreground">
-            <p className="font-medium text-foreground">
-              Como desenhar a rota:
-            </p>
-            <ul className="mt-2 list-inside list-disc space-y-1 text-text-secondary">
-              <li>
-                Toque rápido ou clique para colocar um ponto; arraste com o dedo ou o
-                mouse para mover o mapa
-              </li>
-              <li>Continue adicionando pontos ao longo do trajeto (mínimo 3)</li>
-              <li>
-                Para finalizar, toque de novo no último ponto ou use o botão
-                &quot;Finalizar&quot;
-              </li>
-              <li>No celular, use dois dedos para aproximar ou afastar o mapa</li>
-              <li>Use &quot;Desfazer&quot; se precisar corrigir o último ponto</li>
-              <li>
-                Depois de finalizar o traçado, use &quot;Adicionar parada no mapa&quot;
-                para marcar postos ou outros pontos (com nome)
-              </li>
-            </ul>
-          </div>
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            {routeValue.coordinates.length >= 2 && (
-              <button
-                type="button"
-                onClick={() => {
-                  setRouteValue({ geojson: null, coordinates: [], waypoints: [] });
-                  setMapKey((k) => k + 1);
-                }}
-                className="rounded-xl border border-gray-200 bg-surface px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-gray-50"
-              >
-                Limpar rota
-              </button>
-            )}
-          </div>
           <RouteMap
             key={`route-step-2-${mapKey}`}
             value={routeValue}
             onChange={setRouteValue}
             center={mapCenter ?? undefined}
           />
-          {distanceKm !== null && (
-            <p className="text-sm font-medium text-foreground">
-              Distância: {distanceKm} km
-            </p>
-          )}
           {elevationLoading && (
             <p className="text-sm text-text-secondary">
               Calculando elevação…

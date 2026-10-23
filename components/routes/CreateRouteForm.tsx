@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
@@ -34,6 +34,7 @@ const RouteMap = dynamic(() => import("./RouteMap").then((m) => m.RouteMap), {
 const inputClass =
   "w-full rounded-xl border border-gray-200 bg-surface px-4 py-3 text-foreground placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-shadow text-base";
 const labelClass = "mb-1.5 block text-sm font-medium text-foreground";
+const ELEVATION_DEBOUNCE_MS = 1200;
 
 export function CreateRouteForm() {
   const { user } = useAuth();
@@ -46,7 +47,11 @@ export function CreateRouteForm() {
     waypoints: [],
   });
   const [distanceKm, setDistanceKm] = useState<number | null>(null);
-  const [elevationM, setElevationM] = useState<number | null>(null);
+  /** Elevação calculada para um traçado específico (some quando o traçado muda). */
+  const [elevation, setElevation] = useState<{
+    coords: [number, number][];
+    gainM: number;
+  } | null>(null);
   const [elevationLoading, setElevationLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -70,14 +75,27 @@ export function CreateRouteForm() {
     }
   }, [routeValue.coordinates]);
 
-  const fetchElevation = useCallback(async () => {
-    if (routeValue.coordinates.length < 2) return;
-    setElevationLoading(true);
-    const { elevationGainM, error: err } = await getElevationGain(
-      routeValue.coordinates
-    );
-    setElevationLoading(false);
-    if (!err) setElevationM(elevationGainM);
+  const elevationM =
+    elevation && elevation.coords === routeValue.coordinates ? elevation.gainM : null;
+
+  // Elevação automática quando o traçado para de mudar (o roteamento chega em partes).
+  useEffect(() => {
+    const coords = routeValue.coordinates;
+    if (coords.length < 2) return;
+    let cancelled = false;
+    const t = setTimeout(() => {
+      setElevationLoading(true);
+      void getElevationGain(coords).then(({ elevationGainM, error: err }) => {
+        if (cancelled) return;
+        setElevationLoading(false);
+        if (!err) setElevation({ coords, gainM: elevationGainM });
+      });
+    }, ELEVATION_DEBOUNCE_MS);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+      setElevationLoading(false);
+    };
   }, [routeValue.coordinates]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -111,7 +129,7 @@ export function CreateRouteForm() {
       setElevationLoading(false);
       if (!elErr) {
         elev = elevationGainM;
-        setElevationM(elevationGainM);
+        setElevation({ coords: routeValue.coordinates, gainM: elevationGainM });
       }
     }
 
@@ -185,17 +203,7 @@ export function CreateRouteForm() {
             Obtendo localização…
           </div>
         )}
-        <p className="mt-2 text-xs text-text-secondary">
-          Com a rota pronta, use &quot;Adicionar parada no mapa&quot; para marcar
-          postos ou paradas e dar um nome a cada uma.
-        </p>
         <div className="mt-2 flex flex-wrap gap-4 text-sm text-text-secondary">
-          <span>
-            Distância:{" "}
-            <strong className="text-foreground">
-              {distanceKm != null ? `${distanceKm.toFixed(1)} km` : "—"}
-            </strong>
-          </span>
           <span>
             Elevação:{" "}
             <strong className="text-foreground">
@@ -204,16 +212,6 @@ export function CreateRouteForm() {
             {elevationLoading ? " (calculando…)" : null}
           </span>
         </div>
-        <button
-          type="button"
-          onClick={() => void fetchElevation()}
-          disabled={
-            elevationLoading || routeValue.coordinates.length < 2
-          }
-          className="mt-2 text-sm font-medium text-primary underline-offset-2 hover:underline disabled:opacity-50"
-        >
-          Calcular elevação
-        </button>
       </div>
 
       {error ? (
