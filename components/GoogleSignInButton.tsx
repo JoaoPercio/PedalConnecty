@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { rememberAuthNext } from "@/lib/auth-next";
 import { signInWithGoogle } from "@/lib/auth";
 import { toast } from "sonner";
 
@@ -8,6 +9,7 @@ export function GoogleSignInButton({ disabled }: { disabled?: boolean }) {
   const [loading, setLoading] = useState(false);
 
   async function handleClick() {
+    rememberAuthNext(new URLSearchParams(window.location.search).get("next"));
     setLoading(true);
     const { error } = await signInWithGoogle();
     setLoading(false);

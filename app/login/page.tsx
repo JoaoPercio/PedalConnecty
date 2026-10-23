@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { authPathWithNext, postAuthPath, rememberAuthNext } from "@/lib/auth-next";
 import { signIn } from "@/lib/auth";
 import { getProfile, setCachedProfile } from "@/lib/profile";
 import { isProfileRegistrationComplete } from "@/lib/profile-registration";
@@ -25,11 +26,18 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [returnTo, setReturnTo] = useState<string | null>(null);
+
+  useEffect(() => {
+    const next = new URLSearchParams(window.location.search).get("next");
+    if (next) rememberAuthNext(next);
+    setReturnTo(new URLSearchParams(window.location.search).get("next"));
+  }, []);
 
   useEffect(() => {
     if (authLoading || profileGateLoading) return;
     if (!user) return;
-    router.replace(registrationComplete ? "/home" : "/register/complete");
+    router.replace(registrationComplete ? postAuthPath() : "/register/complete");
   }, [
     user,
     authLoading,
@@ -41,6 +49,7 @@ export default function LoginPage() {
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
+    rememberAuthNext(new URLSearchParams(window.location.search).get("next"));
     const { data, error } = await signIn(email, password);
     setLoading(false);
     if (error) {
@@ -66,7 +75,7 @@ export default function LoginPage() {
         completedPedalsCount: profile?.completed_pedals_count ?? 0,
       });
     }
-    router.replace("/home");
+    router.replace(postAuthPath());
   }
 
   return (
@@ -118,7 +127,7 @@ export default function LoginPage() {
       <p className="mt-6 text-center text-sm text-text-secondary">
         Não tem uma conta?{" "}
         <Link
-          href="/register"
+          href={authPathWithNext("/register", returnTo)}
           className="font-semibold text-primary transition-colors hover:text-secondary"
         >
           Criar conta

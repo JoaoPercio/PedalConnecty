@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { authPathWithNext, rememberAuthNext } from "@/lib/auth-next";
 import type {
   RegistrationFormData,
   StepPersonalInfo as Step1Data,
@@ -74,8 +75,15 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const submitStep3Lock = useRef(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-
+  const [returnTo, setReturnTo] = useState<string | null>(null);
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    const next = new URLSearchParams(window.location.search).get("next");
+    if (next) rememberAuthNext(next);
+    setReturnTo(next);
+  }, []);
+
   useEffect(() => {
     if (formData.step3.avatar_file) {
       const url = URL.createObjectURL(formData.step3.avatar_file);
@@ -160,7 +168,7 @@ export default function RegisterPage() {
           setSubmitError(error.message);
           return;
         }
-        router.push("/login?registered=1");
+        router.push(authPathWithNext("/login", returnTo, { registered: "1" }));
       } finally {
         setLoading(false);
       }
@@ -252,7 +260,7 @@ export default function RegisterPage() {
       <p className="mt-6 text-center text-sm text-text-secondary">
         Já tem uma conta?{" "}
         <Link
-          href="/login"
+          href={authPathWithNext("/login", returnTo)}
           className="font-semibold text-primary transition-colors hover:text-secondary"
         >
           Entrar

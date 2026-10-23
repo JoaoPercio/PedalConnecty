@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { postAuthPath } from "@/lib/auth-next";
 import type {
   StepPersonalInfo as Step1Data,
   StepSkillLevel as Step2Data,
@@ -64,7 +65,7 @@ export default function RegisterCompletePage() {
       const p = await getProfile(user.id);
       if (cancelled) return;
       if (p && isProfileRegistrationComplete(p)) {
-        router.replace("/home");
+        router.replace(postAuthPath());
         return;
       }
       setStep1((prev) => ({
@@ -164,7 +165,7 @@ export default function RegisterCompletePage() {
         return;
       }
       await refreshProfileCache();
-      router.replace("/home");
+      router.replace(postAuthPath());
     } finally {
       setLoading(false);
       submitLock.current = false;

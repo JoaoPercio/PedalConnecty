@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { getProfile, setCachedProfile } from "@/lib/profile";
 import { isProfileRegistrationComplete } from "@/lib/profile-registration";
+import { postAuthPath } from "@/lib/auth-next";
 import { reportUsabilityEvent } from "@/usability-tests";
 
 export default function AuthCallbackPage() {
@@ -64,7 +65,7 @@ export default function AuthCallbackPage() {
         avatarUrl: profile?.avatar_url ?? null,
         completedPedalsCount: profile?.completed_pedals_count ?? 0,
       });
-      router.replace("/home");
+      router.replace(postAuthPath());
     }
 
     void run();

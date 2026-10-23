@@ -10,6 +10,7 @@ export function isPedalDetailsPath(pathname: string): boolean {
 export function pageHasFooterNav(pathname: string): boolean {
   if (pathname === "/home" || pathname.startsWith("/home/")) return true;
   if (pathname.startsWith("/pedals")) return true;
+  if (pathname.startsWith("/convite")) return true;
   if (pathname.startsWith("/routes")) return true;
   if (pathname === "/bike-shops" || pathname === "/map-alerts") return true;
   return false;

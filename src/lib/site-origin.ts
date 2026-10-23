@@ -34,7 +34,9 @@ export function getSiteOrigin(): string {
  * o GoTrue costuma redirecionar para o Site URL do projeto (muitas vezes localhost).
  *
  * Em Vercel, define `NEXT_PUBLIC_SITE_URL=https://pedal-connect.vercel.app` (sem barra final).
- * Em local, deixa vazio ou `http://localhost:3000` no `.env.local`.
+ * Em local, deixa vazio ou `http://localhost:3030` no `.env.local`.
+ * Links de convite usam `getSiteOrigin()`, que no browser prefere o host atual
+ * (localhost, produção ou preview) e não grava a URL de produção no ambiente local.
  */
 export function getAuthRedirectOrigin(): string {
   const configured = normalizeOrigin(process.env.NEXT_PUBLIC_SITE_URL);

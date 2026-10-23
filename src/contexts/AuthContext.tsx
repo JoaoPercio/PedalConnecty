@@ -21,6 +21,7 @@ import {
 } from "@/lib/profile";
 import { isProfileRegistrationComplete } from "@/lib/profile-registration";
 import { isExemptFromRegistrationGate } from "@/lib/auth-paths";
+import { postAuthPath } from "@/lib/auth-next";
 import { signOut as authSignOut } from "@/lib/auth";
 
 interface AuthState {
@@ -173,7 +174,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (profileGate.loading) return;
 
     if (profileGate.isComplete && pathname === "/register/complete") {
-      router.replace("/home");
+      router.replace(postAuthPath());
       return;
     }
 

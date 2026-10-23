@@ -14,6 +14,8 @@ import {
   startPedalAsCreator,
   withdrawFromPedalBeforeStart,
 } from "@/lib/pedal-detail-client";
+import { SharePedalInviteButton } from "@/components/pedals/SharePedalInviteButton";
+import { isDemoPedalId } from "@/usability-tests/demo-pedal";
 
 const RouteMap = dynamic(
   () => import("@/components/pedals/RouteMap").then((m) => m.RouteMap),
@@ -499,6 +501,12 @@ export function PedalInfoTab({
     );
   }
 
+  const canInvite =
+    !readOnly &&
+    !!userId &&
+    !isDemoPedalId(pedal.id) &&
+    (isOwner || (participationLoaded && participation?.status === "approved"));
+
   return (
     <div className="space-y-4">
       <div className="rounded-xl border border-gray-100 bg-surface p-4 shadow-sm">
@@ -561,6 +569,10 @@ export function PedalInfoTab({
           <p className="font-semibold text-foreground">{equipmentText}</p>
         </div>
       </div>
+
+      {canInvite ? (
+        <SharePedalInviteButton pedalId={pedal.id} pedalName={pedal.name} />
+      ) : null}
 
       {participateBlock}
 
