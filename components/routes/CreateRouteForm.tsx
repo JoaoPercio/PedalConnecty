@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   calculateDistanceKm,
@@ -62,7 +63,7 @@ export function CreateRouteForm() {
     void requestUserPosition()
       .then((c) => setMapCenter(c))
       .catch(() => {
-        window.alert(LOCATION_PERMISSION_MESSAGE);
+        toast.warning(LOCATION_PERMISSION_MESSAGE, { id: "route-geolocation" });
         setMapCenter((prev) => prev ?? MAP_INITIAL_VIEW_CENTER);
       });
   }, []);

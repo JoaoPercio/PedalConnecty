@@ -4,10 +4,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import L from "leaflet";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
-import {
-  LOCATION_PERMISSION_MESSAGE,
-  requestUserPosition,
-} from "@/lib/geolocation";
+import { useUserLocation } from "@/hooks/useUserLocation";
+import { LocationFallback } from "@/components/location/LocationFallback";
+import { LocationChip } from "@/components/location/LocationChip";
 import {
   deleteMapAlert,
   insertMapAlert,
@@ -85,9 +84,9 @@ export function MapAlertsMap({
   onFilterModalOpenChange,
 }: MapAlertsMapProps) {
   const { user } = useAuth();
-  const [userPos, setUserPos] = useState<[number, number] | null>(null);
-  const [locationDenied, setLocationDenied] = useState(false);
-  const [loadingLocation, setLoadingLocation] = useState(true);
+  const location = useUserLocation();
+  const userPos = location.position;
+  const loadingLocation = location.loading && !userPos;
   const [alerts, setAlerts] = useState<MapAlertWithProfile[]>([]);
   const [loadingAlerts, setLoadingAlerts] = useState(false);
   const [alertsLoaded, setAlertsLoaded] = useState(false);
@@ -110,28 +109,6 @@ export function MapAlertsMap({
   const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null);
   const [map, setMap] = useState<L.Map | null>(null);
   const [markersLayer, setMarkersLayer] = useState<L.LayerGroup | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoadingLocation(true);
-    setLocationDenied(false);
-    requestUserPosition()
-      .then((pos) => {
-        if (cancelled) return;
-        setUserPos(pos);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setLocationDenied(true);
-      })
-      .finally(() => {
-        if (cancelled) return;
-        setLoadingLocation(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const loadAlerts = useCallback(async () => {
     if (!userPos) return;
@@ -292,6 +269,12 @@ export function MapAlertsMap({
       toast.error("Precisamos da sua localização para criar um alerta.");
       return;
     }
+    // O alerta marca um ponto exato da via; o centro de uma cidade escolhida à mão não serve.
+    if (location.source === "manual") {
+      toast.error("Para criar um alerta, libere o acesso à localização do dispositivo.");
+      void location.retry();
+      return;
+    }
     setCreateModalOpen(true);
   };
 
@@ -363,14 +346,13 @@ export function MapAlertsMap({
   }
 
   if (!userPos) {
-    if (locationDenied) {
-      return (
-        <div className="flex h-full min-h-0 flex-1 flex-col items-center justify-center gap-3 bg-surface px-6 text-center">
-          <p className="max-w-md text-sm text-foreground">{LOCATION_PERMISSION_MESSAGE}</p>
-        </div>
-      );
-    }
-    return null;
+    return (
+      <LocationFallback
+        errorKind={location.errorKind ?? "failed"}
+        onRetry={location.retry}
+        onManual={location.setManual}
+      />
+    );
   }
 
   const count = visibleAlerts.length;
@@ -398,6 +380,7 @@ export function MapAlertsMap({
         loading={loadingAlerts}
         loadingLabel="Atualizando alertas"
       >
+        <LocationChip location={location} />
         <CategoryChips options={ALERT_FILTER_OPTIONS} value={typeFilters} onChange={setTypeFilters} />
       </MapTopBar>
 

@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import {
   chipCoveredByQuickFilter,
   getFilterChips,
@@ -29,6 +30,8 @@ interface NearbyMapTopBarProps {
   onRemoveChip: (chipId: string) => void;
   onOpenFilters: () => void;
   loading?: boolean;
+  /** Primeiro item da fileira de atalhos (ex.: chip de localização). */
+  leadingChip?: ReactNode;
 }
 
 /**
@@ -42,6 +45,7 @@ export function NearbyMapTopBar({
   onRemoveChip,
   onOpenFilters,
   loading = false,
+  leadingChip,
 }: NearbyMapTopBarProps) {
   const extraChips = getFilterChips(filters).filter(
     (chip) => !chipCoveredByQuickFilter(chip, filters)
@@ -57,6 +61,7 @@ export function NearbyMapTopBar({
       loading={loading}
       loadingLabel="Carregando pedais"
     >
+      {leadingChip}
       {extraChips.map((chip) => (
         <MapChip
           key={chip.id}

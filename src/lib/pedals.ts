@@ -2,7 +2,6 @@ import { reportUsabilityEvent } from "@/usability-tests";
 import { supabase } from "./supabase";
 
 const PEDAL_COVERS_BUCKET = "pedals";
-const OPEN_ELEVATION_URL = "https://api.open-elevation.com/api/v1/lookup";
 
 export type PedalDifficulty = "iniciante" | "intermediario" | "avancado";
 export type PedalTerrain = "asfalto" | "terra" | "misto" | "trilha";
@@ -58,12 +57,13 @@ export async function uploadPedalCover(
   if (uploadError) return { coverImageUrl: null, error: uploadError };
 
   const { data } = supabase.storage.from(PEDAL_COVERS_BUCKET).getPublicUrl(filePath);
-  return { coverImageUrl: data.publicUrl, error: null };
+  // Mesmo caminho a cada troca (upsert): a versão na URL evita servir a capa antiga do cache.
+  return { coverImageUrl: `${data.publicUrl}?v=${Date.now()}`, error: null };
 }
 
 /**
- * Fetch elevations for coordinates via OpenElevation API and return total gain in meters.
- * Samples points if there are too many (API-friendly).
+ * Ganho de elevação total (m) do traçado, calculado em /api/elevation
+ * (OpenRouteService com fallback para Open-Meteo).
  */
 export async function getElevationGain(
   coordinates: [number, number][]
@@ -72,44 +72,22 @@ export async function getElevationGain(
     return { elevationGainM: 0, error: null };
   }
 
-  const maxPoints = 100;
-  let points = coordinates;
-  if (coordinates.length > maxPoints) {
-    const step = coordinates.length / maxPoints;
-    points = [];
-    for (let i = 0; i < maxPoints; i++) {
-      const idx = Math.min(Math.floor(i * step), coordinates.length - 1);
-      points.push(coordinates[idx]);
-    }
-    points.push(coordinates[coordinates.length - 1]);
-  }
-
-  const locations = points.map(([lat, lng]) => ({ latitude: lat, longitude: lng }));
-
   try {
-    const res = await fetch(OPEN_ELEVATION_URL, {
+    const res = await fetch("/api/elevation", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: JSON.stringify({ locations }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ coordinates }),
     });
 
     if (!res.ok) {
-      return { elevationGainM: 0, error: new Error(`OpenElevation: ${res.status}`) };
+      return { elevationGainM: 0, error: new Error(`Elevação: HTTP ${res.status}`) };
     }
 
-    const data = (await res.json()) as { results?: { elevation: number }[] };
-    const elevations = data.results?.map((r) => r.elevation) ?? [];
-
-    let gain = 0;
-    for (let i = 1; i < elevations.length; i++) {
-      const diff = elevations[i] - elevations[i - 1];
-      if (diff > 0) gain += diff;
+    const data = (await res.json()) as { elevationGainM?: number };
+    if (typeof data.elevationGainM !== "number" || !Number.isFinite(data.elevationGainM)) {
+      return { elevationGainM: 0, error: new Error("Elevação: resposta inválida") };
     }
-
-    return { elevationGainM: Math.round(gain * 10) / 10, error: null };
+    return { elevationGainM: data.elevationGainM, error: null };
   } catch (err) {
     return {
       elevationGainM: 0,

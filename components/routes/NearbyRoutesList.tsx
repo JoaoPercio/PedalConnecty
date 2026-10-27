@@ -12,10 +12,8 @@ import {
   filterNearbyRoutes,
   type RouteWithCreator,
 } from "@/lib/routes";
-import {
-  requestUserPosition,
-  LOCATION_PERMISSION_MESSAGE,
-} from "@/lib/geolocation";
+import { useUserLocation } from "@/hooks/useUserLocation";
+import { LocationFallback } from "@/components/location/LocationFallback";
 import { RouteCard } from "./RouteCard";
 
 const PAGE_SIZE = 6;
@@ -173,7 +171,10 @@ export function NearbyRoutesList() {
   const [routes, setRoutes] = useState<RouteWithCreator[]>([]);
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
-  const [userPos, setUserPos] = useState<[number, number] | null>(null);
+  const location = useUserLocation();
+  const userPos = location.position;
+  const userLat = userPos?.[0];
+  const userLng = userPos?.[1];
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   const [favoriteRoutes, setFavoriteRoutes] = useState<RouteWithCreator[]>([]);
@@ -192,20 +193,9 @@ export function NearbyRoutesList() {
     [pathname, router, searchParams]
   );
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (lat: number, lng: number) => {
     setLoading(true);
     setError(null);
-    let lat: number;
-    let lng: number;
-    try {
-      [lat, lng] = await requestUserPosition();
-    } catch {
-      setError(LOCATION_PERMISSION_MESSAGE);
-      setRoutes([]);
-      setLoading(false);
-      return;
-    }
-    setUserPos([lat, lng]);
     const { rows, error: fetchErr } = await fetchRoutesForNearbyList();
     if (fetchErr) {
       setError(fetchErr.message);
@@ -229,8 +219,9 @@ export function NearbyRoutesList() {
   }, [user]);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    if (userLat === undefined || userLng === undefined) return;
+    void load(userLat, userLng);
+  }, [load, userLat, userLng]);
 
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
@@ -297,8 +288,13 @@ export function NearbyRoutesList() {
   );
   const hasMore = visibleCount < sourceList.length;
 
-  const listLoading = tab === "favoritas" ? favoritesLoading && !favoritesLoaded : loading;
+  const listLoading =
+    tab === "favoritas"
+      ? favoritesLoading && !favoritesLoaded
+      : (location.loading && !userPos) || (!!userPos && loading);
   const listError = tab === "favoritas" ? favoritesError : error;
+  // Favoritas não dependem da posição; só a aba "todas" precisa do fallback.
+  const needsLocation = tab === "todas" && !userPos && !location.loading;
 
   return (
     <div>
@@ -335,7 +331,15 @@ export function NearbyRoutesList() {
         </div>
       </header>
 
-      {listLoading ? (
+      {needsLocation ? (
+        <div className="rounded-2xl border border-gray-200 bg-surface shadow-sm">
+          <LocationFallback
+            errorKind={location.errorKind ?? "failed"}
+            onRetry={location.retry}
+            onManual={location.setManual}
+          />
+        </div>
+      ) : listLoading ? (
         <div className="flex min-h-[40vh] items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-surface/60">
           <p className="text-sm text-text-secondary">
             {tab === "favoritas"

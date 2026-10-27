@@ -2,10 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { LayerGroup, Map as LeafletMap } from "leaflet";
-import {
-  requestUserPosition,
-  LOCATION_PERMISSION_MESSAGE,
-} from "@/lib/geolocation";
+import { useUserLocation } from "@/hooks/useUserLocation";
+import { LocationFallback } from "@/components/location/LocationFallback";
+import { LocationChip } from "@/components/location/LocationChip";
 import { loadNearbyPedalsForView } from "@/lib/nearby-pedals";
 import { FilterModal } from "@/components/filters/FilterModal";
 import { PedalFilters } from "@/components/filters/PedalFilters";
@@ -68,10 +67,9 @@ const NearbyMapInner = ({
   filterModalOpen: externalFilterOpen,
   onFilterModalOpenChange,
 }: NearbyPedalsMapProps) => {
-  const [userLocation, setUserLocation] = useState<[number, number] | null>(
-    null
-  );
-  const [loadingLocation, setLoadingLocation] = useState(true);
+  const location = useUserLocation();
+  const userLocation = location.position;
+  const loadingLocation = location.loading && !userLocation;
   const [loadingPedals, setLoadingPedals] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [catalog, setCatalog] = useState<EnrichedNearbyPedal[]>([]);
@@ -91,27 +89,6 @@ const NearbyMapInner = ({
   const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null);
   const [map, setMap] = useState<LeafletMap | null>(null);
   const [markersLayer, setMarkersLayer] = useState<LayerGroup | null>(null);
-
-  useEffect(() => {
-    let isMounted = true;
-    setLoadingLocation(true);
-    requestUserPosition()
-      .then((pos) => {
-        if (!isMounted) return;
-        setUserLocation(pos);
-      })
-      .catch(() => {
-        if (!isMounted) return;
-        setError(LOCATION_PERMISSION_MESSAGE);
-      })
-      .finally(() => {
-        if (!isMounted) return;
-        setLoadingLocation(false);
-      });
-    return () => {
-      isMounted = false;
-    };
-  }, []);
 
   useEffect(() => {
     const sync = () => setDemoActive(shouldInjectDemoPedal());
@@ -335,6 +312,16 @@ const NearbyMapInner = ({
     );
   }
 
+  if (!userLocation) {
+    return (
+      <LocationFallback
+        errorKind={location.errorKind ?? "failed"}
+        onRetry={location.retry}
+        onManual={location.setManual}
+      />
+    );
+  }
+
   if (!center) {
     return (
       <div className="flex h-full min-h-0 flex-1 items-center justify-center bg-surface px-6">
@@ -397,6 +384,7 @@ const NearbyMapInner = ({
         onRemoveChip={handleRemoveChip}
         onOpenFilters={() => setFilterModalOpen(true)}
         loading={loadingPedals}
+        leadingChip={<LocationChip location={location} />}
       />
 
       {/* Desktop: painel de filtros fixo à esquerda */}

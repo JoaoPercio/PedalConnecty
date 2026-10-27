@@ -2,10 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import L from "leaflet";
-import {
-  requestUserPosition,
-  LOCATION_PERMISSION_MESSAGE,
-} from "@/lib/geolocation";
+import { useUserLocation } from "@/hooks/useUserLocation";
+import { LocationFallback } from "@/components/location/LocationFallback";
+import { LocationChip } from "@/components/location/LocationChip";
 import {
   fetchBikeServices,
   haversineKm,
@@ -76,10 +75,10 @@ export function BikeServicesMap({
   filterModalOpen: externalFilterOpen,
   onFilterModalOpenChange,
 }: BikeServicesMapProps) {
-  const [userPos, setUserPos] = useState<[number, number] | null>(null);
-  const [locationDenied, setLocationDenied] = useState(false);
+  const location = useUserLocation();
+  const userPos = location.position;
+  const loadingLocation = location.loading && !userPos;
   const [places, setPlaces] = useState<BikeServicePlace[]>([]);
-  const [loadingLocation, setLoadingLocation] = useState(true);
   const [loadingPlaces, setLoadingPlaces] = useState(false);
   const [placesLoaded, setPlacesLoaded] = useState(false);
   const [fetchError, setFetchError] = useState(false);
@@ -99,28 +98,6 @@ export function BikeServicesMap({
   const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null);
   const [map, setMap] = useState<L.Map | null>(null);
   const [poiLayer, setPoiLayer] = useState<L.LayerGroup | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoadingLocation(true);
-    setLocationDenied(false);
-    requestUserPosition()
-      .then((pos) => {
-        if (cancelled) return;
-        setUserPos(pos);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setLocationDenied(true);
-      })
-      .finally(() => {
-        if (cancelled) return;
-        setLoadingLocation(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   useEffect(() => {
     if (!userPos) return;
@@ -265,16 +242,13 @@ export function BikeServicesMap({
   }
 
   if (!userPos) {
-    if (locationDenied) {
-      return (
-        <div className="flex h-full min-h-0 flex-1 flex-col items-center justify-center gap-3 bg-surface px-6 text-center">
-          <p className="max-w-md text-sm text-foreground">
-            {LOCATION_PERMISSION_MESSAGE}
-          </p>
-        </div>
-      );
-    }
-    return null;
+    return (
+      <LocationFallback
+        errorKind={location.errorKind ?? "failed"}
+        onRetry={location.retry}
+        onManual={location.setManual}
+      />
+    );
   }
 
   const count = visiblePlaces.length;
@@ -302,6 +276,7 @@ export function BikeServicesMap({
         loading={loadingPlaces}
         loadingLabel="Carregando lojas"
       >
+        <LocationChip location={location} />
         <CategoryChips options={KIND_FILTER_OPTIONS} value={filters} onChange={setFilters} />
       </MapTopBar>
 

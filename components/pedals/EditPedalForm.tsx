@@ -1,74 +1,22 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
-import dynamic from "next/dynamic";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   updatePedal,
   uploadPedalCover,
-  getElevationGain,
-  calculateDistanceKm,
   toDatetimeLocalInput,
-  getMinDatetimeLocalForPedal,
-  validatePedalDatetimeLocal,
-  validateAverageSpeedKmh,
-  parseAverageSpeedKmh,
   type PedalDifficulty,
   type PedalTerrain,
   type PedalAgeGroup,
   type PedalVisibility,
 } from "@/lib/pedals";
-import {
-  requestUserPosition,
-  getMapCenter,
-  MAP_INITIAL_VIEW_CENTER,
-  LOCATION_PERMISSION_MESSAGE,
-} from "@/lib/geolocation";
-import { parseStoredRouteWaypoints, serializeWaypointsForDb } from "@/lib/route-waypoints";
+import { parseStoredRouteWaypoints } from "@/lib/route-waypoints";
 import { regeneratePedalInviteCode } from "@/lib/pedal-detail-client";
-import { StepNavigation } from "./StepNavigation";
-import { EquipmentInput } from "./EquipmentInput";
+import { PedalFormWizard, type PedalFormInitial, type PedalFormSubmit } from "./PedalFormWizard";
 import type { RouteGeoJSON, RouteMapValue } from "./RouteMap";
-
-const RouteMap = dynamic(() => import("./RouteMap").then((m) => m.RouteMap), {
-  ssr: false,
-  loading: () => (
-    <div className="flex h-[400px] items-center justify-center rounded-xl border border-gray-200 bg-gray-50 text-text-secondary">
-      Carregando mapa…
-    </div>
-  ),
-});
-
-const DIFFICULTY_OPTIONS: { value: PedalDifficulty; label: string }[] = [
-  { value: "iniciante", label: "Iniciante" },
-  { value: "intermediario", label: "Intermediário" },
-  { value: "avancado", label: "Avançado" },
-];
-
-const TERRAIN_OPTIONS: { value: PedalTerrain; label: string }[] = [
-  { value: "asfalto", label: "Asfalto" },
-  { value: "terra", label: "Terra" },
-  { value: "misto", label: "Misto" },
-  { value: "trilha", label: "Trilha" },
-];
-
-const AGE_GROUP_OPTIONS: { value: PedalAgeGroup; label: string }[] = [
-  { value: "todas", label: "Todas" },
-  { value: "adultos", label: "Adultos" },
-  { value: "melhor_idade", label: "Melhor idade" },
-];
-
-const VISIBILITY_OPTIONS: { value: PedalVisibility; label: string }[] = [
-  { value: "public", label: "Público" },
-  { value: "female_only", label: "Apenas mulheres" },
-  { value: "private", label: "Privado" },
-];
-
-const inputClass =
-  "w-full rounded-xl border border-gray-200 bg-surface px-4 py-3 text-foreground placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-shadow text-base";
-const labelClass = "mb-1.5 block text-sm font-medium text-foreground";
 
 function geojsonToRouteValue(
   route_geojson: unknown,
@@ -119,620 +67,138 @@ interface EditPedalFormProps {
 export function EditPedalForm({ initial }: EditPedalFormProps) {
   const { user } = useAuth();
   const router = useRouter();
-  const [step, setStep] = useState(1);
-  const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [elevationLoading, setElevationLoading] = useState(false);
-
-  const [name, setName] = useState(initial.name);
-  const [description, setDescription] = useState(initial.description ?? "");
-  const [date, setDate] = useState(() => toDatetimeLocalInput(initial.date));
-  const [difficulty, setDifficulty] = useState<PedalDifficulty | "">(
-    initial.difficulty ?? ""
-  );
-  const [terrain, setTerrain] = useState<PedalTerrain | "">(
-    initial.terrain ?? ""
-  );
-  const [averageSpeedKmh, setAverageSpeedKmh] = useState(
-    initial.average_speed_kmh != null ? String(initial.average_speed_kmh) : ""
-  );
-  const [coverFile, setCoverFile] = useState<File | null>(null);
-  const [coverPreviewUrl, setCoverPreviewUrl] = useState<string | null>(null);
-
-  const [meetingPoint, setMeetingPoint] = useState(initial.start_location ?? "");
-  const [routeValue, setRouteValue] = useState<RouteMapValue>(() =>
-    geojsonToRouteValue(initial.route_geojson, initial.route_waypoints)
-  );
-  const [distanceKm, setDistanceKm] = useState<number | null>(
-    initial.distance_km
-  );
-  const [elevationGain, setElevationGain] = useState<number | null>(
-    initial.elevation_gain
-  );
-
-  const [maxParticipants, setMaxParticipants] = useState(
-    initial.max_participants != null ? String(initial.max_participants) : ""
-  );
-  const [requiresSafetyEquipment, setRequiresSafetyEquipment] = useState(
-    initial.requires_safety_equipment
-  );
-  const [requiredEquipment, setRequiredEquipment] = useState<string[]>(
-    initial.required_equipment ?? []
-  );
-  const [ageGroup, setAgeGroup] = useState<PedalAgeGroup>(
-    initial.age_group ?? "todas"
-  );
-  const [visibility, setVisibility] = useState<PedalVisibility>(
-    (["public", "female_only", "private"].includes(initial.visibility)
-      ? initial.visibility
-      : "public") as PedalVisibility
-  );
-  const [inviteCode, setInviteCode] = useState<string | null>(
-    initial.invite_code ?? null
-  );
+  const [inviteCode, setInviteCode] = useState<string | null>(initial.invite_code ?? null);
   const [regeneratingInvite, setRegeneratingInvite] = useState(false);
-  const [mapKey, setMapKey] = useState(0);
-  const [mapCenter, setMapCenter] = useState<[number, number] | null>(() => {
-    const rv = geojsonToRouteValue(initial.route_geojson, initial.route_waypoints);
-    if (rv.coordinates.length >= 1) {
-      return [rv.coordinates[0][0], rv.coordinates[0][1]];
-    }
-    return null;
-  });
-  const prevStepRef = useRef(1);
-  const initialCoordinatesRef = useRef(routeValue.coordinates);
 
-  useEffect(() => {
-    const prev = prevStepRef.current;
-    prevStepRef.current = step;
-    if (step === 2 || step === 4) {
-      if (prev !== step) setMapKey((k) => k + 1);
-    }
-  }, [step]);
-
-  useEffect(() => {
-    if (step === 2) {
-      setMapCenter((prev) => getMapCenter() ?? prev);
-      requestUserPosition()
-        .then((center) => setMapCenter(center))
-        .catch(() => {
-          window.alert(LOCATION_PERMISSION_MESSAGE);
-          setMapCenter((prev) => prev ?? MAP_INITIAL_VIEW_CENTER);
-        });
-    }
-  }, [step]);
-
-  useEffect(() => {
-    if (routeValue.coordinates.length >= 2) {
-      setDistanceKm(calculateDistanceKm(routeValue.coordinates));
-    } else {
-      setDistanceKm(null);
-    }
-    // Traçado mudou: a elevação salva não vale mais (recalculada ao avançar).
-    if (routeValue.coordinates !== initialCoordinatesRef.current) {
-      setElevationGain(null);
-    }
-  }, [routeValue.coordinates]);
-
-  useEffect(() => {
-    if (coverFile) {
-      const url = URL.createObjectURL(coverFile);
-      setCoverPreviewUrl(url);
-      return () => URL.revokeObjectURL(url);
-    }
-    setCoverPreviewUrl(null);
-  }, [coverFile]);
-
-  const scheduleDateError =
-    date === "" ? null : validatePedalDatetimeLocal(date);
-  const averageSpeedError =
-    averageSpeedKmh === "" ? null : validateAverageSpeedKmh(averageSpeedKmh);
-  const step1Valid =
-    name.trim() !== "" &&
-    date !== "" &&
-    scheduleDateError === null &&
-    difficulty !== "" &&
-    terrain !== "" &&
-    averageSpeedKmh.trim() !== "" &&
-    averageSpeedError === null;
-  const step2Valid =
-    routeValue.geojson !== null && routeValue.coordinates.length >= 2;
-
-  const canProceed = (s: number) => {
-    if (s === 1) return step1Valid;
-    if (s === 2) return step2Valid;
-    return true;
-  };
-
-  const fetchElevation = useCallback(async () => {
-    if (routeValue.coordinates.length < 2) return;
-    setElevationLoading(true);
-    const { elevationGainM, error: err } = await getElevationGain(
-      routeValue.coordinates
-    );
-    setElevationLoading(false);
-    if (!err) setElevationGain(elevationGainM);
-  }, [routeValue.coordinates]);
-
-  const getStepValidationError = useCallback(
-    (s: number): string | null => {
-      if (s === 1) {
-        if (!name.trim()) return "Informe o nome do pedal.";
-        if (!date) return "Informe a data e hora do pedal.";
-        const dateErr = validatePedalDatetimeLocal(date);
-        if (dateErr) return dateErr;
-        if (!difficulty) return "Selecione a dificuldade.";
-        if (!terrain) return "Selecione o terreno.";
-        const speedErr = validateAverageSpeedKmh(averageSpeedKmh);
-        if (speedErr) return speedErr;
-      }
-      if (s === 2) {
-        if (!routeValue.geojson || routeValue.coordinates.length < 2) {
-          return "Desenhe a rota no mapa (mínimo 2 pontos) para continuar.";
-        }
-      }
-      return null;
-    },
-    [name, date, difficulty, terrain, averageSpeedKmh, routeValue.geojson, routeValue.coordinates.length]
+  const formInitial = useMemo<PedalFormInitial>(
+    () => ({
+      name: initial.name,
+      description: initial.description ?? "",
+      date: toDatetimeLocalInput(initial.date),
+      difficulty: initial.difficulty ?? "",
+      terrain: initial.terrain ?? "",
+      averageSpeedKmh:
+        initial.average_speed_kmh != null ? String(initial.average_speed_kmh) : "",
+      meetingPoint: initial.start_location ?? "",
+      route: geojsonToRouteValue(initial.route_geojson, initial.route_waypoints),
+      // 0 costuma ser resultado da antiga falha da API de elevação: recalcula.
+      elevationGain: initial.elevation_gain ? initial.elevation_gain : null,
+      maxParticipants: initial.max_participants != null ? String(initial.max_participants) : "",
+      requiresSafetyEquipment:
+        initial.requires_safety_equipment || (initial.required_equipment?.length ?? 0) > 0,
+      requiredEquipment: initial.required_equipment ?? [],
+      ageGroup: initial.age_group ?? "todas",
+      visibility: (["public", "female_only", "private"].includes(initial.visibility)
+        ? initial.visibility
+        : "public") as PedalVisibility,
+      coverUrl: initial.cover_image_url,
+    }),
+    [initial],
   );
 
-  const handleNext = async () => {
-    setError(null);
-    if (step === 2 && canProceed(2) && elevationGain === null) {
-      await fetchElevation();
-    }
-    if (step < 4) {
-      if (!canProceed(step)) {
-        const msg = getStepValidationError(step);
-        setError(msg ?? "Preencha todos os campos obrigatórios para continuar.");
-        return;
-      }
-      setStep((s) => s + 1);
-    } else {
-      await handleSave();
-    }
-  };
-
-  const handleBack = useCallback(() => {
-    setError(null);
-    if (step > 1) setStep((s) => s - 1);
-  }, [step]);
-
-  async function handleSave() {
+  async function handleSubmit({
+    fields,
+    coverFile,
+    removeCover,
+  }: PedalFormSubmit): Promise<boolean> {
     if (!user) {
-      setError("Faça login para salvar.");
-      return;
-    }
-    setSubmitting(true);
-    setError(null);
-
-    const dateValidation = validatePedalDatetimeLocal(date);
-    if (dateValidation) {
-      setError(dateValidation);
-      setSubmitting(false);
-      return;
+      toast.error("Faça login para salvar.");
+      return false;
     }
 
-    const coords = routeValue.coordinates;
-    const startLat = coords.length ? coords[0][0] : null;
-    const startLng = coords.length ? coords[0][1] : null;
-    const endLat = coords.length ? coords[coords.length - 1][0] : null;
-    const endLng = coords.length ? coords[coords.length - 1][1] : null;
-
-    const finalElevation =
-      elevationGain ?? (await getElevationGain(coords)).elevationGainM;
-
-    let coverUrl: string | null = initial.cover_image_url;
-
+    let coverUrl: string | null = removeCover ? null : initial.cover_image_url;
     if (coverFile) {
-      const { coverImageUrl, error: uploadErr } = await uploadPedalCover(
-        initial.id,
-        coverFile
-      );
-      if (uploadErr) {
-        setError(uploadErr.message ?? "Erro ao enviar a imagem de capa.");
-        setSubmitting(false);
-        return;
+      const { coverImageUrl, error: uploadErr } = await uploadPedalCover(initial.id, coverFile);
+      if (uploadErr || !coverImageUrl) {
+        // Salva o resto mesmo assim, mantendo a capa anterior.
+        toast.warning("Não foi possível enviar a nova imagem de capa.", {
+          description: "As demais alterações serão salvas com a capa anterior.",
+        });
+      } else {
+        coverUrl = coverImageUrl;
       }
-      if (coverImageUrl) coverUrl = coverImageUrl;
     }
 
     const { error: updateErr } = await updatePedal(initial.id, {
-      name: name.trim(),
-      description: description.trim() || null,
-      date: new Date(date).toISOString(),
-      start_location: meetingPoint.trim() || null,
-      start_lat: startLat,
-      start_lng: startLng,
-      end_location: null,
-      end_lat: endLat,
-      end_lng: endLng,
-      distance_km: distanceKm,
-      average_speed_kmh: parseAverageSpeedKmh(averageSpeedKmh),
-      elevation_gain: finalElevation,
-      difficulty: difficulty || null,
-      terrain: terrain || null,
-      max_participants: maxParticipants ? parseInt(maxParticipants, 10) : null,
-      requires_safety_equipment: requiresSafetyEquipment,
-      required_equipment: requiredEquipment,
-      age_group: ageGroup,
-      visibility,
-      route_geojson: routeValue.geojson,
-      route_waypoints: serializeWaypointsForDb(routeValue.waypoints),
+      ...fields,
       cover_image_url: coverUrl,
     });
-
-    setSubmitting(false);
-
     if (updateErr) {
-      setError(updateErr.message ?? "Erro ao atualizar o pedal.");
-      return;
+      toast.error("Não foi possível salvar as alterações. Tente novamente.", {
+        description: updateErr.message,
+      });
+      return false;
     }
 
+    toast.success("Alterações salvas!");
     router.replace(`/pedals/${initial.id}`);
+    return true;
+  }
+
+  async function handleRegenerateInvite() {
+    setRegeneratingInvite(true);
+    const { code, error } = await regeneratePedalInviteCode(initial.id);
+    setRegeneratingInvite(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    if (code) {
+      setInviteCode(code);
+      toast.success("Novo código gerado. O anterior deixa de funcionar.");
+    }
   }
 
   if (!user) return null;
 
-  const existingCover = initial.cover_image_url;
+  const privateNotice = (
+    <div className="rounded-xl border border-gray-200 bg-gray-50/80 p-3">
+      <p className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
+        Código de convite
+      </p>
+      {inviteCode ? (
+        <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
+          <code className="flex-1 rounded-lg bg-surface px-3 py-2 font-mono text-sm font-semibold tracking-wider">
+            {inviteCode}
+          </code>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                navigator.clipboard.writeText(inviteCode).then(
+                  () => toast.success("Código copiado"),
+                  () => toast.error("Não foi possível copiar o código."),
+                );
+              }}
+              className="rounded-lg border border-primary/30 px-3 py-2 text-sm font-semibold text-primary"
+            >
+              Copiar
+            </button>
+            <button
+              type="button"
+              disabled={regeneratingInvite}
+              onClick={handleRegenerateInvite}
+              className="rounded-lg border border-gray-300 bg-surface px-3 py-2 text-sm font-semibold text-foreground disabled:opacity-50"
+            >
+              {regeneratingInvite ? "Gerando…" : "Novo código"}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <p className="mt-2 text-sm text-text-secondary">
+          Será gerado automaticamente ao salvar como privado.
+        </p>
+      )}
+    </div>
+  );
 
   return (
-    <div className="mx-auto max-w-lg px-4 py-6">
-      <h1 className="mb-6 text-xl font-semibold text-foreground">
-        Editar pedal
-      </h1>
-
-      {error && (
-        <div
-          role="alert"
-          className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
-        >
-          {error}
-        </div>
-      )}
-
-      {step === 1 && (
-        <div className="space-y-4">
-          <div>
-            <label htmlFor="edit-name" className={labelClass}>
-              Nome do pedal *
-            </label>
-            <input
-              id="edit-name"
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className={inputClass}
-              placeholder="Ex: Pedal da manhã"
-            />
-          </div>
-          <div>
-            <label htmlFor="edit-description" className={labelClass}>
-              Descrição
-            </label>
-            <textarea
-              id="edit-description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={3}
-              className={inputClass}
-              placeholder="Descreva o pedal..."
-            />
-          </div>
-          <div>
-            <label htmlFor="edit-date" className={labelClass}>
-              Data e hora *
-            </label>
-            <input
-              id="edit-date"
-              type="datetime-local"
-              value={date}
-              min={getMinDatetimeLocalForPedal()}
-              onChange={(e) => setDate(e.target.value)}
-              className={inputClass}
-            />
-          </div>
-          <div>
-            <label htmlFor="edit-difficulty" className={labelClass}>
-              Dificuldade *
-            </label>
-            <select
-              id="edit-difficulty"
-              value={difficulty}
-              onChange={(e) => setDifficulty(e.target.value as PedalDifficulty)}
-              className={inputClass}
-            >
-              <option value="">Selecione</option>
-              {DIFFICULTY_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label htmlFor="edit-terrain" className={labelClass}>
-              Terreno *
-            </label>
-            <select
-              id="edit-terrain"
-              value={terrain}
-              onChange={(e) => setTerrain(e.target.value as PedalTerrain)}
-              className={inputClass}
-            >
-              <option value="">Selecione</option>
-              {TERRAIN_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label htmlFor="edit-averageSpeed" className={labelClass}>
-              Velocidade média do trajeto (km/h) *
-            </label>
-            <input
-              id="edit-averageSpeed"
-              type="number"
-              min={1}
-              max={80}
-              step={0.1}
-              value={averageSpeedKmh}
-              onChange={(e) => setAverageSpeedKmh(e.target.value)}
-              className={inputClass}
-              placeholder="Ex: 25"
-            />
-            <p className="mt-1.5 text-xs text-text-secondary">
-              Ritmo previsto do grupo durante o pedal.
-            </p>
-          </div>
-          <div>
-            <label className={labelClass}>Imagem de capa</label>
-            <div className="flex flex-col gap-2">
-              {existingCover && !coverPreviewUrl && (
-                <img
-                  src={existingCover}
-                  alt="Capa atual"
-                  className="h-32 w-full rounded-xl object-cover"
-                />
-              )}
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => setCoverFile(e.target.files?.[0] ?? null)}
-                className="block w-full text-sm text-foreground file:mr-4 file:rounded-lg file:border-0 file:bg-primary/10 file:px-4 file:py-2 file:text-primary"
-              />
-              {coverPreviewUrl && (
-                <img
-                  src={coverPreviewUrl}
-                  alt="Nova capa"
-                  className="h-32 w-full rounded-xl object-cover"
-                />
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {step === 2 && (
-        <div className="space-y-4">
-          <RouteMap
-            key={`edit-route-${mapKey}`}
-            value={routeValue}
-            onChange={setRouteValue}
-            center={mapCenter ?? undefined}
-          />
-          {elevationLoading && (
-            <p className="text-sm text-text-secondary">
-              Calculando elevação…
-            </p>
-          )}
-          {elevationGain !== null && !elevationLoading && (
-            <p className="text-sm font-medium text-foreground">
-              Ganho de elevação: {elevationGain} m
-            </p>
-          )}
-          <div>
-            <label htmlFor="edit-meetingPoint" className={labelClass}>
-              Ponto de encontro
-            </label>
-            <textarea
-              id="edit-meetingPoint"
-              value={meetingPoint}
-              onChange={(e) => setMeetingPoint(e.target.value)}
-              rows={3}
-              className={inputClass}
-              placeholder="Ex.: estacionamento do parque, portão norte, em frente ao café…"
-            />
-            <p className="mt-1.5 text-xs text-text-secondary">
-              Opcional, mas ajuda os participantes a saber onde se juntar. O mapa usa o
-              primeiro ponto da rota como referência no GPS.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {step === 3 && (
-        <div className="space-y-4">
-          <div>
-            <label htmlFor="edit-max" className={labelClass}>
-              Máximo de participantes
-            </label>
-            <input
-              id="edit-max"
-              type="number"
-              min={1}
-              value={maxParticipants}
-              onChange={(e) => setMaxParticipants(e.target.value)}
-              className={inputClass}
-              placeholder="Ex: 20"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <input
-              id="edit-safety"
-              type="checkbox"
-              checked={requiresSafetyEquipment}
-              onChange={(e) => setRequiresSafetyEquipment(e.target.checked)}
-              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary/30"
-            />
-            <label htmlFor="edit-safety" className="text-sm text-foreground">
-              Exige equipamento de segurança
-            </label>
-          </div>
-          <EquipmentInput
-            value={requiredEquipment}
-            onChange={setRequiredEquipment}
-          />
-          <div>
-            <label htmlFor="edit-age" className={labelClass}>
-              Faixa etária
-            </label>
-            <select
-              id="edit-age"
-              value={ageGroup}
-              onChange={(e) => setAgeGroup(e.target.value as PedalAgeGroup)}
-              className={inputClass}
-            >
-              {AGE_GROUP_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label htmlFor="edit-vis" className={labelClass}>
-              Visibilidade
-            </label>
-            <select
-              id="edit-vis"
-              value={visibility}
-              onChange={(e) =>
-                setVisibility(e.target.value as PedalVisibility)
-              }
-              className={inputClass}
-            >
-              {VISIBILITY_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-            {visibility === "private" && (
-              <div className="mt-3 rounded-xl border border-gray-200 bg-gray-50/80 p-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
-                  Código de convite
-                </p>
-                {inviteCode ? (
-                  <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
-                    <code className="flex-1 rounded-lg bg-surface px-3 py-2 font-mono text-sm font-semibold tracking-wider">
-                      {inviteCode}
-                    </code>
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          void navigator.clipboard.writeText(inviteCode).then(() => {
-                            toast.success("Código copiado");
-                          });
-                        }}
-                        className="rounded-lg border border-primary/30 px-3 py-2 text-sm font-semibold text-primary"
-                      >
-                        Copiar
-                      </button>
-                      <button
-                        type="button"
-                        disabled={regeneratingInvite}
-                        onClick={async () => {
-                          setRegeneratingInvite(true);
-                          const { code, error } = await regeneratePedalInviteCode(
-                            initial.id
-                          );
-                          setRegeneratingInvite(false);
-                          if (error) {
-                            toast.error(error.message);
-                            return;
-                          }
-                          if (code) {
-                            setInviteCode(code);
-                            toast.success("Novo código gerado. O anterior deixa de funcionar.");
-                          }
-                        }}
-                        className="rounded-lg border border-gray-300 bg-surface px-3 py-2 text-sm font-semibold text-foreground disabled:opacity-50"
-                      >
-                        {regeneratingInvite ? "…" : "Novo código"}
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="mt-2 text-sm text-text-secondary">
-                    Será gerado automaticamente ao guardar como privado.
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {step === 4 && (
-        <div className="space-y-4 rounded-xl border border-gray-200 bg-surface p-4">
-          <p className="font-medium text-foreground">{name}</p>
-          <p className="text-sm text-text-secondary">
-            {date ? new Date(date).toLocaleString("pt-BR") : "—"}
-          </p>
-          <p className="text-sm text-foreground">
-            Distância: {distanceKm ?? "—"} km
-          </p>
-          <p className="text-sm text-foreground">
-            Elevação: {elevationGain ?? "—"} m
-          </p>
-          <p className="text-sm text-foreground">
-            Velocidade média: {averageSpeedKmh ? `${averageSpeedKmh} km/h` : "—"}
-          </p>
-          <p className="text-sm text-foreground">
-            Dificuldade:{" "}
-            {DIFFICULTY_OPTIONS.find((o) => o.value === difficulty)?.label ??
-              "—"}
-          </p>
-          <p className="text-sm text-foreground">
-            Terreno:{" "}
-            {TERRAIN_OPTIONS.find((o) => o.value === terrain)?.label ?? "—"}
-          </p>
-          <p className="text-sm text-foreground">
-            Máx. participantes: {maxParticipants || "Sem limite"}
-          </p>
-          {meetingPoint.trim() ? (
-            <p className="text-sm text-foreground">
-              Ponto de encontro: {meetingPoint.trim()}
-            </p>
-          ) : null}
-          {routeValue.geojson && (
-            <div className="h-32 overflow-hidden rounded-lg border border-gray-200">
-              <RouteMap
-                key={`edit-preview-${mapKey}`}
-                value={routeValue}
-                onChange={() => {}}
-                height="128px"
-                readOnly
-              />
-            </div>
-          )}
-        </div>
-      )}
-
-      <StepNavigation
-        currentStep={step}
-        onBack={handleBack}
-        onNext={handleNext}
-        isFirstStep={step === 1}
-        isLastStep={step === 4}
-        nextLabel="Salvar alterações"
-        isSubmitting={submitting}
-        submittingLabel="Salvando…"
-      />
-    </div>
+    <PedalFormWizard
+      mode="edit"
+      initial={formInitial}
+      exitHref={`/pedals/${initial.id}`}
+      onSubmit={handleSubmit}
+      privateNotice={privateNotice}
+    />
   );
 }

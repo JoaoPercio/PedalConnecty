@@ -70,8 +70,19 @@ export function EquipmentInput({
           placeholder={value.length === 0 ? placeholder : "Adicionar…"}
           className="min-w-[120px] flex-1 border-0 bg-transparent px-2 py-1 text-foreground placeholder:text-text-secondary focus:outline-none"
         />
+        {input.trim() && (
+          <button
+            type="button"
+            // Evita o blur do input (que já adicionaria o item) antes do clique.
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={addItem}
+            className="rounded-lg bg-primary px-3 py-1 text-sm font-medium text-white hover:opacity-95"
+          >
+            Adicionar
+          </button>
+        )}
       </div>
-      <p className="mt-1 text-xs text-text-secondary">Pressione Enter para adicionar</p>
+      <p className="mt-1 text-xs text-text-secondary">Digite e toque em Adicionar (ou Enter)</p>
     </div>
   );
 }
