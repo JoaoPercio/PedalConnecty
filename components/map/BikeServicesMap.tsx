@@ -5,8 +5,8 @@ import L from "leaflet";
 import { useUserLocation } from "@/hooks/useUserLocation";
 import { LocationFallback } from "@/components/location/LocationFallback";
 import { LocationChip } from "@/components/location/LocationChip";
+import { useBikeServices } from "@/hooks/useBikeServices";
 import {
-  fetchBikeServices,
   haversineKm,
   kindLabel,
   type BikeServiceKind,
@@ -41,7 +41,7 @@ import { reportUsabilityEvent } from "@/usability-tests";
 import { addBaseTileLayer, MAP_ATTRIBUTION_HTML } from "@/lib/map-tiles";
 
 const ZOOM = 12;
-const SEARCH_RADIUS_KM = 30;
+const SEARCH_RADIUS_KM = 20;
 /** Ao enquadrar, considera só os locais mais próximos (evita zoom muito aberto). */
 const FIT_NEAREST = 10;
 /** Card do carrossel tem os botões "Como chegar"/"Ligar": painel recolhido mais alto. */
@@ -78,11 +78,11 @@ export function BikeServicesMap({
   const location = useUserLocation();
   const userPos = location.position;
   const loadingLocation = location.loading && !userPos;
-  const [places, setPlaces] = useState<BikeServicePlace[]>([]);
-  const [loadingPlaces, setLoadingPlaces] = useState(false);
-  const [placesLoaded, setPlacesLoaded] = useState(false);
-  const [fetchError, setFetchError] = useState(false);
-  const [reloadNonce, setReloadNonce] = useState(0);
+  const placesQuery = useBikeServices(userPos);
+  const places = useMemo(() => placesQuery.data ?? [], [placesQuery.data]);
+  const loadingPlaces = placesQuery.isFetching;
+  const placesLoaded = placesQuery.data !== undefined || placesQuery.isError;
+  const fetchError = placesQuery.isError;
   const [filters, setFilters] = useState<Record<BikeServiceKind, boolean>>(
     () => allCategoriesSelected(KIND_ORDER)
   );
@@ -98,26 +98,6 @@ export function BikeServicesMap({
   const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null);
   const [map, setMap] = useState<L.Map | null>(null);
   const [poiLayer, setPoiLayer] = useState<L.LayerGroup | null>(null);
-
-  useEffect(() => {
-    if (!userPos) return;
-
-    let cancelled = false;
-    setLoadingPlaces(true);
-    setFetchError(false);
-
-    fetchBikeServices(userPos[0], userPos[1]).then(({ places: list, error }) => {
-      if (cancelled) return;
-      setPlaces(list);
-      setFetchError(error !== null);
-      setLoadingPlaces(false);
-      setPlacesLoaded(true);
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [userPos, reloadNonce]);
 
   const visiblePlaces = useMemo<PlaceWithDistance[]>(() => {
     const list = places.filter((p) => filters[p.kind]);
@@ -335,7 +315,7 @@ export function BikeServicesMap({
               <p className="flex-1 text-xs text-red-700">Erro ao buscar locais. O serviço do mapa pode estar lento.</p>
               <button
                 type="button"
-                onClick={() => setReloadNonce((n) => n + 1)}
+                onClick={() => placesQuery.refetch()}
                 className="min-h-9 shrink-0 rounded-full bg-white px-3 text-xs font-semibold text-red-700 ring-1 ring-red-200"
               >
                 Tentar de novo

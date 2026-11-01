@@ -36,6 +36,11 @@ export function kindLabel(kind: BikeServiceKind): string {
   }
 }
 
+/** Arredonda para 2 casas (~1 km): chave estável para o cache da busca. */
+export function roundCoord(v: number): number {
+  return Math.round(v * 100) / 100;
+}
+
 /**
  * Haversine distance in km between two WGS84 points.
  */

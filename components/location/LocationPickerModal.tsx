@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { searchPlaces, type PlaceSearchResult } from "@/lib/geolocation";
 
 interface LocationPickerModalProps {
@@ -71,7 +72,9 @@ export function LocationPickerModal({
 
   if (!open) return null;
 
-  return (
+  // Portal no body: aberto a partir da barra do mapa (z-[600]), ficaria preso
+  // nesse stacking context, abaixo do painel de resultados (z-[700]).
+  return createPortal(
     <div
       className="fixed inset-0 z-[2500] flex items-end justify-center sm:items-center sm:p-4"
       role="dialog"
@@ -155,6 +158,7 @@ export function LocationPickerModal({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

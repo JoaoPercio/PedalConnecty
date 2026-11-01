@@ -8,4 +8,6 @@ export const queryKeys = {
     [...queryKeys.all, "pedal-messages", pedalId] as const,
   pedalParticipation: (pedalId: string, userId: string) =>
     [...queryKeys.all, "pedal-participation", pedalId, userId] as const,
+  bikeServices: (lat: number, lng: number) =>
+    [...queryKeys.all, "bike-services", lat, lng] as const,
 };
