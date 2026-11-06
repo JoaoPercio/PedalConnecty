@@ -11,6 +11,7 @@ import type {
   StepAccount as Step3Data,
 } from "@/types/registration";
 import { registerWithProfile } from "@/lib/registration";
+import { toast } from "sonner";
 import {
   validateStep1PersonalInfo,
 } from "@/lib/registration-validation";
@@ -74,7 +75,6 @@ export default function RegisterPage() {
   const [step3PrimaryReady, setStep3PrimaryReady] = useState(false);
   const [loading, setLoading] = useState(false);
   const submitStep3Lock = useRef(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
   const [returnTo, setReturnTo] = useState<string | null>(null);
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null);
 
@@ -148,7 +148,6 @@ export default function RegisterPage() {
       }
       setStep(step - 1);
     }
-    setSubmitError(null);
   };
 
   const submitStep3 = async () => {
@@ -161,11 +160,10 @@ export default function RegisterPage() {
       if (Object.keys(errs).length > 0) return;
 
       setLoading(true);
-      setSubmitError(null);
       try {
         const { error } = await registerWithProfile(formData);
         if (error) {
-          setSubmitError(error.message);
+          toast.error(error.message);
           return;
         }
         router.push(authPathWithNext("/login", returnTo, { registered: "1" }));
@@ -215,12 +213,6 @@ export default function RegisterPage() {
             avatarPreviewUrl={avatarPreviewUrl}
             disabled={loading}
           />
-        )}
-
-        {submitError && (
-          <p className="rounded-xl bg-red-50 px-4 py-2 text-sm text-red-600">
-            {submitError}
-          </p>
         )}
 
         <div className="mt-2 flex gap-3">

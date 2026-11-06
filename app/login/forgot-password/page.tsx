@@ -3,6 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { resetPassword } from "@/lib/auth";
+import { getAuthErrorMessage } from "@/lib/auth-errors";
+import { toast } from "sonner";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { AuthBrand } from "@/components/auth/AuthBrand";
 import { AuthField } from "@/components/auth/AuthField";
@@ -19,7 +21,7 @@ export default function ForgotPasswordPage() {
     const { error } = await resetPassword(email);
     setLoading(false);
     if (error) {
-      alert(error.message);
+      toast.error(getAuthErrorMessage(error));
     } else {
       setSent(true);
     }

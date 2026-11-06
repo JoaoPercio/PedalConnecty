@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { getAuthErrorMessage } from "@/lib/auth-errors";
+import { toast } from "sonner";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
@@ -126,7 +128,7 @@ export default function ProfileEditPage() {
           password: pw,
         });
         if (pwdErr) {
-          setError(pwdErr.message);
+          toast.error(getAuthErrorMessage(pwdErr));
           setSaving(false);
           return;
         }

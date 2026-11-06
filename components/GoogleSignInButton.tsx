@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { rememberAuthNext } from "@/lib/auth-next";
 import { signInWithGoogle } from "@/lib/auth";
+import { getAuthErrorMessage } from "@/lib/auth-errors";
 import { toast } from "sonner";
 
 export function GoogleSignInButton({ disabled }: { disabled?: boolean }) {
@@ -14,7 +15,7 @@ export function GoogleSignInButton({ disabled }: { disabled?: boolean }) {
     const { error } = await signInWithGoogle();
     setLoading(false);
     if (error) {
-      toast.error(error.message);
+      toast.error(getAuthErrorMessage(error));
     }
   }
 

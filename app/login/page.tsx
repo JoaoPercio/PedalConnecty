@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { authPathWithNext, postAuthPath, rememberAuthNext } from "@/lib/auth-next";
 import { signIn } from "@/lib/auth";
+import { getAuthErrorMessage } from "@/lib/auth-errors";
+import { toast } from "sonner";
 import { getProfile, setCachedProfile } from "@/lib/profile";
 import { isProfileRegistrationComplete } from "@/lib/profile-registration";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
@@ -53,7 +55,7 @@ export default function LoginPage() {
     const { data, error } = await signIn(email, password);
     setLoading(false);
     if (error) {
-      alert(error.message);
+      toast.error(getAuthErrorMessage(error));
       return;
     }
     const userId = data?.user?.id;

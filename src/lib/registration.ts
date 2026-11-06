@@ -1,5 +1,6 @@
 import { reportUsabilityEvent } from "@/usability-tests";
 import { supabase } from "./supabase";
+import { getAuthErrorMessage } from "./auth-errors";
 import { uploadAvatar } from "./profile";
 import type { ProfileInsert, RegistrationFormData } from "@/types/registration";
 
@@ -16,7 +17,7 @@ export async function registerWithProfile(
   });
 
   if (signUpError) {
-    return { error: signUpError };
+    return { error: new Error(getAuthErrorMessage(signUpError)) };
   }
 
   const userId = authData.user?.id;
